@@ -522,10 +522,10 @@ export function isIOS() {
 
 export function getGradeByWrongTimes(wrongTimes?: number): Rating {
   if (wrongTimes !== undefined) {
-    if (wrongTimes >= 9) return Rating.Again
-    else if (wrongTimes <= 6) return Rating.Hard
-    else if (wrongTimes <= 3) return Rating.Good
-    else if (wrongTimes <= 0) return Rating.Easy
+    if (wrongTimes > 6) return Rating.Again
+    else if (wrongTimes > 3) return Rating.Hard
+    else if (wrongTimes > 0) return Rating.Good
+    else if (wrongTimes === 0) return Rating.Easy
   } else {
     return Rating.Easy
   }

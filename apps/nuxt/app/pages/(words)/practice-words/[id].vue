@@ -447,12 +447,10 @@ function next(isTyping: boolean = true) {
           } else if (statStore.stage === WordPracticeStage.ListenNewWord) {
             nextStage(shuffle(taskWords.new), '开始默写新词')
           } else if (statStore.stage === WordPracticeStage.DictationNewWord) {
-            console.log('新词学习完成，批量设置为 Good')
+            console.log('新词学习完成')
             let easyCount = 0
-            // wrongTime -> grade
-
             taskWords.new.map((w, _, arr) => {
-              //如果没有打错过/或者跳过的单词，设为 Easy，但不超过总新词数的 20%
+              //如果没有打错过/或者主动跳过的单词，设为 Easy，但不超过总新词数的 20%
               if (
                 (!allWrongWords.has(w.word) || checkWordIsNeedNext(word)) &&
                 easyCount < Math.floor(arr.length * 0.2)
@@ -460,7 +458,7 @@ function next(isTyping: boolean = true) {
                 easyCount++
                 setWordCard(Rating.Easy, w.word)
               } else {
-                //根据错误次数生成评级
+                //其他词，则根据错误次数生成评级
                 setWordCard(getGradeByWrongTimes(data.wrongTimesMap[w.word]), w.word, data.wrongTimesMap[w.word])
               }
             })
@@ -470,6 +468,10 @@ function next(isTyping: boolean = true) {
           } else if (statStore.stage === WordPracticeStage.ListenReview) {
             nextStage(shuffle(taskWords.review), '开始默写旧词')
           } else if (statStore.stage === WordPracticeStage.DictationReview) {
+            taskWords.review.map((w) => {
+              //根据错误次数生成评级
+              setWordCard(getGradeByWrongTimes(data.wrongTimesMap[w.word]), w.word, data.wrongTimesMap[w.word])
+            })
             complete()
           }
         } else if (settingStore.wordPracticeMode === WordPracticeMode.ListenOnly) {

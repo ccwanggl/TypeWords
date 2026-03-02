@@ -12,17 +12,48 @@ import { Supabase } from '~/utils/supabase.ts'
 let unsub = null
 let unsub2 = null
 
+async function getServerData() {
+  const store = useBaseStore()
+  const settingStore = useSettingStore()
+
+  if (Supabase.check()) {
+    const { data } = await Supabase.getInstance()?.from('words').select()
+    if (data?.length) {
+      store.setState(data[0].data)
+    }
+    const { data: settingData } = await Supabase.getInstance()?.from('setting').select()
+    if (settingData?.length) {
+      settingStore.setState(settingData[0].data)
+    }
+  }
+}
+
 export function useInit() {
   const store = useBaseStore()
   const settingStore = useSettingStore()
   const runtimeStore = useRuntimeStore()
   const userStore = useUserStore()
-  let lastAudioFileIdList = []
-  let isInitializing = true // 标记是否正在初始化
-
 
   //init 有可能重复执行，因为从老网站导了数据之后需要 init
   async function init() {
+    let lastAudioFileIdList = []
+    let isInitializing = true // 标记是否正在初始化
+
+    const onvisibilitychange = async () => {
+      //如果标签页失活了就不保存数据了
+      if (document.hidden) {
+        isInitializing = false
+      } else {
+        //当激活时，要先获取数据，以保证本地是最新的，以免本地老数据上传到后端覆盖新数据
+        isInitializing = false
+        await getServerData()
+        isInitializing = true
+      }
+    }
+
+    document.removeEventListener('visibilitychange', onvisibilitychange)
+    document.addEventListener('visibilitychange', onvisibilitychange)
+
     unsub?.()
     //用 $subscribe 替代 watch
     unsub = store.$subscribe((mutation, n) => {
@@ -76,17 +107,8 @@ export function useInit() {
     await userStore.init()
     await store.init()
     await settingStore.init()
+    await getServerData()
 
-    if (Supabase.check()) {
-      const { data } = await Supabase.getInstance()?.from('words').select()
-      if (data?.length) {
-        store.setState(data[0].data)
-      }
-      const { data: settingData } = await Supabase.getInstance()?.from('setting').select()
-      if (settingData?.length) {
-        settingStore.setState(settingData[0].data)
-      }
-    }
     store.load = true
     isInitializing = false // 初始化完成，允许保存数据
 
