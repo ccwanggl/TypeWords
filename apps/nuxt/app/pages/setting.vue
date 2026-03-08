@@ -2,7 +2,7 @@
 import { defineAsyncComponent, nextTick, ref, watch } from 'vue'
 import { getDefaultSettingState, useSettingStore } from '@/stores/setting'
 import { getShortcutKey, useEventListener } from '@/hooks/event'
-import { checkAndUpgradeSaveDict, checkAndUpgradeSaveSetting, cloneDeep, loadJsLib } from '@/utils'
+import { checkAndUpgradeSaveDict, checkAndUpgradeSaveSetting, cloneDeep, loadJsLib, shakeCommonDict } from '@/utils'
 import BaseButton from '~/components/base/BaseButton.vue'
 import { getDefaultBaseState, useBaseStore } from '@/stores/base'
 import {
@@ -30,7 +30,14 @@ import CommonSetting from '@/components/setting/CommonSetting.vue'
 import FsrsSetting from '@/components/setting/FsrsSetting.vue'
 import ArticleSetting from '@/components/setting/ArticleSetting.vue'
 import WordSetting from '@/components/setting/WordSetting.vue'
-import { PRACTICE_ARTICLE_CACHE, PRACTICE_WORD_CACHE } from '@/utils/cache'
+import {
+  PRACTICE_ARTICLE_CACHE,
+  PRACTICE_WORD_CACHE,
+  getPracticeArticleCacheLocal,
+  getPracticeWordCacheLocal,
+  setPracticeArticleCacheLocal,
+  setPracticeWordCacheLocal,
+} from '@/utils/cache'
 import { usePracticeWordPersistence, usePracticeArticlePersistence } from '@/composables/usePracticePersistence'
 import SettingItem from '~/components/setting/SettingItem.vue'
 import Form, { type FormType } from '~/components/base/form/Form.vue'
@@ -48,6 +55,8 @@ type HistoryBackupIndexItem = {
 type HistoryBackupMeta = HistoryBackupIndexItem & {
   previousHash?: string | null
 }
+
+type SupabaseSyncType = 'dict' | 'setting' | 'practice_word' | 'practice_article'
 
 let route = useRoute()
 let title = APP_NAME + ' 设置'
@@ -313,6 +322,8 @@ let pendingNextAction = $ref<'import' | 'supabase_save' | 'restore_history' | ''
 let historyBackups = $ref<HistoryBackupMeta[]>([])
 let restoreTarget = $ref<HistoryBackupMeta | null>(null)
 let restoreLoading = $ref(false)
+let showSbFirstSyncChoiceDialog = $ref(false)
+let sbSyncChoiceLoading = $ref(false)
 
 function openImportGate() {
   pendingNextAction = 'import'
@@ -393,6 +404,122 @@ async function restoreHistoryData() {
     Toast.error('恢复失败：' + ((error as Error)?.message ?? String(error)))
   } finally {
     restoreLoading = false
+  }
+}
+
+async function pushLocalDataToSupabase(client: any): Promise<void> {
+  const updated_at = new Date().toISOString()
+  const rows: Array<{ type: SupabaseSyncType; data: unknown; data_version: number; updated_at: string }> = [
+    {
+      type: 'dict',
+      data: shakeCommonDict(store.$state),
+      data_version: SAVE_DICT_KEY.version,
+      updated_at,
+    },
+    {
+      type: 'setting',
+      data: settingStore.$state,
+      data_version: SAVE_SETTING_KEY.version,
+      updated_at,
+    },
+    {
+      type: 'practice_word',
+      data: getPracticeWordCacheLocal(),
+      data_version: PRACTICE_WORD_CACHE.version,
+      updated_at,
+    },
+    {
+      type: 'practice_article',
+      data: getPracticeArticleCacheLocal(),
+      data_version: PRACTICE_ARTICLE_CACHE.version,
+      updated_at,
+    },
+  ]
+  const { error } = await client.from('typewords_data').upsert(rows, { onConflict: 'type' })
+  if (error) throw new Error(error?.message ?? String(error))
+}
+
+async function pullRemoteDataToLocal(client: any): Promise<void> {
+  const { data, error } = await client
+    .from('typewords_data')
+    .select('type, data, updated_at, data_version')
+    .in('type', ['dict', 'setting', 'practice_word', 'practice_article'])
+    .not('data_version', 'is', null)
+  if (error) throw new Error(error?.message ?? String(error))
+  const rows = (data ?? []) as Array<{ type: SupabaseSyncType; data: unknown; updated_at?: string }>
+  const map = new Map(rows.map(item => [item.type, item]))
+  const now = new Date().toISOString()
+
+  const dictRow = map.get('dict')
+  if (dictRow && dictRow.data && typeof dictRow.data === 'object') {
+    const dictState = checkAndUpgradeSaveDict(dictRow.data as any)
+    dictState.load = true
+    store.setState(dictState)
+    await set(
+      SAVE_DICT_KEY.key,
+      JSON.stringify({
+        val: dictState,
+        version: SAVE_DICT_KEY.version,
+        updated_at: dictRow.updated_at ?? now,
+      })
+    )
+  }
+
+  const settingRow = map.get('setting')
+  if (settingRow && settingRow.data && typeof settingRow.data === 'object') {
+    const settingState = checkAndUpgradeSaveSetting(settingRow.data as any)
+    settingState.load = true
+    settingStore.setState(settingState)
+    await set(
+      SAVE_SETTING_KEY.key,
+      JSON.stringify({
+        val: settingState,
+        version: SAVE_SETTING_KEY.version,
+        updated_at: settingRow.updated_at ?? now,
+      })
+    )
+  }
+
+  const practiceWordRow = map.get('practice_word')
+  setPracticeWordCacheLocal(
+    practiceWordRow && practiceWordRow.data && typeof practiceWordRow.data === 'object'
+      ? (practiceWordRow.data as any)
+      : null,
+    practiceWordRow?.updated_at ?? now
+  )
+
+  const practiceArticleRow = map.get('practice_article')
+  setPracticeArticleCacheLocal(
+    practiceArticleRow && practiceArticleRow.data && typeof practiceArticleRow.data === 'object'
+      ? (practiceArticleRow.data as any)
+      : null,
+    practiceArticleRow?.updated_at ?? now
+  )
+}
+
+async function onSbFirstSyncChoice(action: 'push_local' | 'pull_remote') {
+  if (sbSyncChoiceLoading) return
+  sbSyncChoiceLoading = true
+  try {
+    const client = Supabase.getInstance() as any
+    if (action === 'push_local') {
+      await pushLocalDataToSupabase(client)
+      Toast.success('已将本地数据推送到远程')
+    } else {
+      await pullRemoteDataToLocal(client)
+      Toast.success('已拉取远程数据到本地')
+    }
+    Supabase.setStatus('success')
+    sbStatus = Supabase.getStatus()
+    showSbFirstSyncChoiceDialog = false
+    transferOk()
+  } catch (error) {
+    const msg = (error as Error)?.message ?? String(error)
+    Supabase.setStatus('error', msg)
+    sbStatus = Supabase.getStatus()
+    Toast.error('同步方向操作失败：' + msg)
+  } finally {
+    sbSyncChoiceLoading = false
   }
 }
 
@@ -481,10 +608,23 @@ async function doSaveSbConfig() {
           await (supabase as any).from('typewords_data').insert(item)
         }
       }
+      const { data: hasVersionData, error: versionError } = await (supabase as any)
+        .from('typewords_data')
+        .select('type, data_version')
+        .in('type', ['dict', 'setting', 'practice_word', 'practice_article'])
+        .not('data_version', 'is', null)
+      if (versionError) {
+        throw new Error(versionError?.message ?? String(versionError))
+      }
+      const hasRemoteVersionData = Array.isArray(hasVersionData) && hasVersionData.length > 0
       Supabase.setStatus('success')
       sbStatus = Supabase.getStatus()
       Toast.success('保存成功')
-      transferOk()
+      if (hasRemoteVersionData) {
+        showSbFirstSyncChoiceDialog = true
+      } else {
+        transferOk()
+      }
     }
   } catch (error) {
     const msg = (error as Error)?.message ?? String(error)
@@ -751,6 +891,19 @@ function removeSbConfig() {
       </div>
     </div>
   </Dialog>
+
+  <Dialog v-model="showSbFirstSyncChoiceDialog" title="检测到远程已有数据">
+    <div class="p-4 w-120">
+      <div class="text-sm">检测到远程存在数据，请选择同步方向：</div>
+      <div class="text-sm color-gray mt-2">- 本地推送：用当前本地数据覆盖远程</div>
+      <div class="text-sm color-gray">- 拉取远程：用远程数据覆盖当前本地</div>
+      <div class="flex justify-end mt-4 gap-space">
+        <BaseButton :loading="sbSyncChoiceLoading" @click="onSbFirstSyncChoice('push_local')">本地推送</BaseButton>
+        <BaseButton :loading="sbSyncChoiceLoading" @click="onSbFirstSyncChoice('pull_remote')">拉取远程</BaseButton>
+      </div>
+    </div>
+  </Dialog>
+
   <MigrateDialog v-model="showTransfer" @ok="transferOk" />
 </template>
 
