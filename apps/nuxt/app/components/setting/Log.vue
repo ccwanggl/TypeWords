@@ -1,6 +1,10 @@
 <script setup lang="ts">
 let logList = [
   {
+    date: '2026/03/08',
+    content: '新增本地数据自动备份功能',
+  },
+  {
     date: '2026/03/06',
     content: '新增 Supabase  同步数据',
   },

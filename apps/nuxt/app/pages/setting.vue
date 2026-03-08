@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { defineAsyncComponent, nextTick, ref, watch } from 'vue'
 import { getDefaultSettingState, useSettingStore } from '@/stores/setting'
 import { getShortcutKey, useEventListener } from '@/hooks/event'
 import { checkAndUpgradeSaveDict, checkAndUpgradeSaveSetting, cloneDeep, loadJsLib } from '@/utils'
@@ -8,16 +8,19 @@ import { getDefaultBaseState, useBaseStore } from '@/stores/base'
 import {
   APP_NAME,
   APP_VERSION,
+  BACKUP_INDEX_KEY,
   DefaultShortcutKeyMap,
   DictId,
   LIB_JS_URL,
   LOCAL_FILE_KEY,
   Old_Host,
   Origin,
+  SAVE_DICT_KEY,
+  SAVE_SETTING_KEY,
 } from '@/config/env'
 import BasePage from '~/components/base/BasePage.vue'
 import Toast from '@/components/base/toast/Toast'
-import { set } from 'idb-keyval'
+import { get, set } from 'idb-keyval'
 import { useRuntimeStore } from '@/stores/runtime'
 import { useExport } from '@/hooks/export'
 import MigrateDialog from '@/components/MigrateDialog.vue'
@@ -33,6 +36,18 @@ import SettingItem from '~/components/setting/SettingItem.vue'
 import Form, { type FormType } from '~/components/base/form/Form.vue'
 import { Supabase } from '~/utils/supabase.ts'
 import BackupGateDialog from '@/components/dialog/BackupGateDialog.vue'
+
+const Dialog = defineAsyncComponent(() => import('@/components/dialog/Dialog.vue'))
+
+type HistoryBackupIndexItem = {
+  hash: string
+  key: string
+  createdAt: number
+}
+
+type HistoryBackupMeta = HistoryBackupIndexItem & {
+  previousHash?: string | null
+}
 
 let route = useRoute()
 let title = APP_NAME + ' 设置'
@@ -293,10 +308,42 @@ async function importData(e) {
 let isNewHost = $ref(false)
 let showTransfer = $ref(false)
 let showBackupGate = $ref(false)
-let pendingNextAction = $ref<'import' | 'supabase_save' | ''>('')
+let showHistoryDialog = $ref(false)
+let pendingNextAction = $ref<'import' | 'supabase_save' | 'restore_history' | ''>('')
+let historyBackups = $ref<HistoryBackupMeta[]>([])
+let restoreTarget = $ref<HistoryBackupMeta | null>(null)
+let restoreLoading = $ref(false)
 
 function openImportGate() {
   pendingNextAction = 'import'
+  showBackupGate = true
+}
+
+async function openHistoryDialog() {
+  const raw = (await get(BACKUP_INDEX_KEY)) as HistoryBackupIndexItem[] | undefined
+  const index = Array.isArray(raw)
+    ? raw.filter(item => item && typeof item.hash === 'string' && typeof item.key === 'string')
+    : []
+  const items: HistoryBackupMeta[] = []
+  for (const item of index) {
+    const snapshot = (await get(item.key)) as { meta?: { previousHash?: string | null } } | undefined
+    items.push({
+      ...item,
+      previousHash: snapshot?.meta?.previousHash ?? null,
+    })
+  }
+  historyBackups = items.sort((a, b) => b.createdAt - a.createdAt)
+  showHistoryDialog = true
+}
+
+function formatHistoryTime(timestamp: number): string {
+  return new Date(timestamp).toLocaleString()
+}
+
+function openHistoryRestoreGate(item: HistoryBackupMeta) {
+  restoreTarget = item
+  pendingNextAction = 'restore_history'
+  showHistoryDialog = false
   showBackupGate = true
 }
 
@@ -306,6 +353,47 @@ function openSupabaseSaveGate() {
     pendingNextAction = 'supabase_save'
     showBackupGate = true
   })
+}
+
+async function restoreHistoryData() {
+  if (!restoreTarget) return
+  if (restoreLoading) return
+  restoreLoading = true
+  try {
+    const snapshot = (await get(restoreTarget.key)) as
+      | {
+          data?: {
+            dict?: unknown
+            setting?: unknown
+            appVersion?: unknown
+            practiceWord?: string | null
+            practiceArticle?: string | null
+          }
+        }
+      | undefined
+    if (!snapshot?.data) {
+      Toast.error('历史数据不存在或已损坏')
+      return
+    }
+    await set(SAVE_DICT_KEY.key, snapshot.data.dict ?? null)
+    await set(SAVE_SETTING_KEY.key, snapshot.data.setting ?? null)
+    await set(APP_VERSION.key, snapshot.data.appVersion ?? null)
+    if (snapshot.data.practiceWord == null) localStorage.removeItem(PRACTICE_WORD_CACHE.key)
+    else localStorage.setItem(PRACTICE_WORD_CACHE.key, snapshot.data.practiceWord)
+    if (snapshot.data.practiceArticle == null) localStorage.removeItem(PRACTICE_ARTICLE_CACHE.key)
+    else localStorage.setItem(PRACTICE_ARTICLE_CACHE.key, snapshot.data.practiceArticle)
+    showBackupGate = false
+    showHistoryDialog = false
+    pendingNextAction = ''
+    Toast.success('历史数据恢复成功，页面即将刷新')
+    setTimeout(() => {
+      location.reload()
+    }, 1000)
+  } catch (error) {
+    Toast.error('恢复失败：' + ((error as Error)?.message ?? String(error)))
+  } finally {
+    restoreLoading = false
+  }
 }
 
 onMounted(() => {
@@ -523,6 +611,7 @@ function removeSbConfig() {
             <div class="line my-3"></div>
             <SettingItem title="其他"> </SettingItem>
             <div class="flex gap-space">
+              <BaseButton @click="openHistoryDialog">历史数据</BaseButton>
               <PopConfirm title="该操作将会清除所有数据，确认继续？" @confirm="clearAllData">
                 <BaseButton>清除所有数据</BaseButton>
               </PopConfirm>
@@ -625,6 +714,14 @@ function removeSbConfig() {
       <BaseButton @click="doSaveSbConfig" :disabled="disabled" v-if="pendingNextAction === 'supabase_save'"
         >保存配置</BaseButton
       >
+      <BaseButton
+        v-else-if="pendingNextAction === 'restore_history'"
+        @click="restoreHistoryData"
+        :disabled="disabled"
+        :loading="restoreLoading"
+      >
+        恢复此历史数据
+      </BaseButton>
       <div class="inline-block relative ml-4" v-else>
         <BaseButton :disabled="disabled" :loading="importLoading">{{ $t('import_data_restore') }}</BaseButton>
         <input
@@ -638,6 +735,22 @@ function removeSbConfig() {
       </div>
     </template>
   </BackupGateDialog>
+
+  <Dialog v-model="showHistoryDialog" title="历史数据">
+    <div class="p-4 w-120 max-h-100 overflow-auto">
+      <div v-if="!historyBackups.length" class="text-sm color-gray">暂无历史数据</div>
+      <div v-else class="flex flex-col gap-3">
+        <div v-for="item in historyBackups" :key="item.key" class="border rounded-md">
+          <div class="text-sm">版本号：{{ item.hash }}</div>
+          <div class="text-sm color-gray">上一个版本：{{ item.previousHash || '-' }}</div>
+          <div class="text-sm color-gray">自动备份时间：{{ formatHistoryTime(item.createdAt) }}</div>
+          <div class="mt-2">
+            <BaseButton @click="openHistoryRestoreGate(item)" :disabled="restoreLoading">恢复此版本</BaseButton>
+          </div>
+        </div>
+      </div>
+    </div>
+  </Dialog>
   <MigrateDialog v-model="showTransfer" @ok="transferOk" />
 </template>
 

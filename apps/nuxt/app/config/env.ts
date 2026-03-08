@@ -78,6 +78,9 @@ export const EXPORT_DATA_KEY = {
   version: 4,
 }
 export const LOCAL_FILE_KEY = 'typing-word-files'
+export const WEBSITE_VERSION_HASH = 'type-words-website-version-hash'
+export const BACKUP_INDEX_KEY = 'type-words-backup-index'
+export const BACKUP_KEY = 'type-words-backup-'
 
 export const TourConfig = {
   useModalOverlay: true,

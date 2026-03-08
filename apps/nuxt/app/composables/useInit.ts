@@ -1,12 +1,21 @@
-import { APP_VERSION, LOCAL_FILE_KEY, SAVE_DICT_KEY, SAVE_SETTING_KEY } from '@/config/env.ts'
+import {
+  APP_VERSION,
+  BACKUP_INDEX_KEY,
+  BACKUP_KEY,
+  WEBSITE_VERSION_HASH,
+  LOCAL_FILE_KEY,
+  SAVE_DICT_KEY,
+  SAVE_SETTING_KEY,
+} from '@/config/env.ts'
 import {
   _getDictDataByUrl,
   checkAndUpgradeSaveDict,
   checkAndUpgradeSaveSetting,
   shakeCommonDict,
 } from '@/utils/index.ts'
+import { PRACTICE_ARTICLE_CACHE, PRACTICE_WORD_CACHE } from '@/utils/cache'
 import { compareTimestamps, shouldFetchRemote } from '@/utils/sync'
-import { get, set } from 'idb-keyval'
+import { del, get, set } from 'idb-keyval'
 import { syncSetting } from '~/apis'
 import { AppEnv, DictId } from '~/config/env.ts'
 import { useBaseStore } from '~/stores/base.ts'
@@ -29,6 +38,12 @@ type RemoteMetaRow = {
 
 type RemoteDataRow = RemoteMetaRow & {
   data: unknown
+}
+
+type HashBackupIndexItem = {
+  hash: string
+  key: string
+  createdAt: number
 }
 
 function getDataVersion(type: SyncType): number {
@@ -61,6 +76,49 @@ async function persistLocalState(type: SyncType, val: unknown, updated_at?: stri
       updated_at,
     })
   )
+}
+
+function normalizeHash(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null
+  const v = raw.trim()
+  return v.length > 0 ? v : null
+}
+
+async function saveHashSnapshot(currentHash: string, previousHash: string | null): Promise<void> {
+  const backupKey = `${BACKUP_KEY}${currentHash}`
+  const createdAt = Date.now()
+
+  const snapshot = {
+    meta: {
+      currentHash,
+      previousHash,
+      createdAt,
+    },
+    data: {
+      dict: await get(SAVE_DICT_KEY.key),
+      setting: await get(SAVE_SETTING_KEY.key),
+      appVersion: await get(APP_VERSION.key),
+      practiceWord: import.meta.client ? localStorage.getItem(PRACTICE_WORD_CACHE.key) : null,
+      practiceArticle: import.meta.client ? localStorage.getItem(PRACTICE_ARTICLE_CACHE.key) : null,
+    },
+  }
+  await set(backupKey, snapshot)
+
+  const rawIndex = (await get(BACKUP_INDEX_KEY)) as HashBackupIndexItem[] | undefined
+  const index = Array.isArray(rawIndex)
+    ? rawIndex.filter(item => item && typeof item.hash === 'string' && typeof item.key === 'string')
+    : []
+
+  index.push({ hash: currentHash, key: backupKey, createdAt })
+
+  if (index.length > 10) {
+    index.sort((a, b) => a.createdAt - b.createdAt)
+    const removed = index.splice(0, index.length - 10)
+    for (const item of removed) {
+      await del(item.key)
+    }
+  }
+  await set(BACKUP_INDEX_KEY, index)
 }
 
 async function fetchServerMeta(): Promise<RemoteMetaRow[] | null> {
@@ -199,7 +257,24 @@ export function useInit() {
   const settingStore = useSettingStore()
   const runtimeStore = useRuntimeStore()
   const userStore = useUserStore()
+  const runtimeConfig = useRuntimeConfig()
   let isInitializing = true // 标记是否正在初始化
+
+  const ensureHashGuardBeforeInit = async () => {
+    try {
+      const currentHash = normalizeHash(runtimeConfig?.public?.latestCommitHash)
+      if (!currentHash) return
+
+      const localHash = normalizeHash(await get(WEBSITE_VERSION_HASH))
+      //如果本地hash与代码hash不一值，则保存快照
+      if (localHash !== currentHash) {
+        await saveHashSnapshot(currentHash, localHash)
+      }
+      await set(WEBSITE_VERSION_HASH, currentHash)
+    } catch (e) {
+      console.warn('init hash guard failed', e)
+    }
+  }
 
   const onvisibilitychange = async () => {
     //如果标签页失活了就不保存数据了
@@ -279,6 +354,7 @@ export function useInit() {
       }, 1000)
     )
 
+    await ensureHashGuardBeforeInit()
     await userStore.init()
     await store.init()
     await settingStore.init()
