@@ -101,7 +101,7 @@ const save = debounce(
       },
       statStoreData: statStore.$state,
     }),
-  500
+  1500
 )
 
 watch([() => sectionIndex, () => sentenceIndex, () => wordIndex, () => stringIndex], ([a, b, c]) => {

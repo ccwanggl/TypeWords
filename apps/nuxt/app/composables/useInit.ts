@@ -261,7 +261,7 @@ export function useInit() {
             lastAudioFileIdList = [...audioFileIdList]
           })
         }
-      }, 500)
+      }, 1000)
     )
 
     unsub2?.()
@@ -276,7 +276,7 @@ export function useInit() {
         if (AppEnv.CAN_REQUEST) {
           syncSetting(null, settingStore.$state)
         }
-      }, 500)
+      }, 1000)
     )
 
     await userStore.init()

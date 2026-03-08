@@ -25,7 +25,13 @@ useSeoMeta({
         <div class="font-bold text-2xl mb-6">{{ $t('faq') }}</div>
         <div class="list">
           <Collapse :q="$t('qa2_a')">
-            <ConflictNoticeText />
+            <ConflictNoticeText type="keyboard" />
+          </Collapse>
+
+          <div class="line"></div>
+
+          <Collapse q="按删除键却返回了上一页">
+            <ConflictNoticeText type="del" />
           </Collapse>
 
           <div class="line"></div>
@@ -76,16 +82,15 @@ useSeoMeta({
 
           <Collapse :q="$t('qa13_a')" :a="[$t('qa13_q1'), $t('qa13_q2'), $t('qa13_q3'), $t('qa13_q4')]">
             <div class="flex items-center">
-              {{$t('wechat_group')}}：
+              {{ $t('wechat_group') }}：
               <WeChat />
             </div>
             <p>
               {{ $t('github_address') }}： <a :href="GITHUB" target="_blank">{{ GITHUB }}</a>
             </p>
             <div class="">
-              {{ $t('about_ticket_feedback') }}<a :href="`https://v.wjx.cn/vm/ev0W7fv.aspx#`" target="_blank"
-                >https://v.wjx.cn/vm/ev0W7fv.aspx#</a
-              >
+              {{ $t('about_ticket_feedback')
+              }}<a :href="`https://v.wjx.cn/vm/ev0W7fv.aspx#`" target="_blank">https://v.wjx.cn/vm/ev0W7fv.aspx#</a>
             </div>
           </Collapse>
         </div>

@@ -49,7 +49,6 @@ import { WordPracticeMode } from '@/types/enum.ts'
 
 const store = useBaseStore()
 const settingStore = useSettingStore()
-const practiceStore = usePracticeStore()
 const wordPersistence = usePracticeWordPersistence()
 const router = useRouter()
 const { nav } = useNav()

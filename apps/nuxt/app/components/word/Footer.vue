@@ -226,7 +226,7 @@ const stages = $computed(() => {
           <BaseIcon
             v-if="settingStore.wordPracticeMode !== WordPracticeMode.Free"
             @click="emit('skipStep')"
-            :title="`${$t('skip_to_next_stage')}:${WordPracticeStageNameMap[statStore.nextStage]}`"
+            :title="`${$t('skip_to_next_stage')}:${WordPracticeStageNameMap[statStore.nextStage]}(${settingStore.shortcutKeyMap[ShortcutKey.NextStep]})`"
           >
             <IconFluentArrowRight16Regular />
           </BaseIcon>

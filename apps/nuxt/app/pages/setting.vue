@@ -2,7 +2,7 @@
 import { nextTick, ref, watch } from 'vue'
 import { getDefaultSettingState, useSettingStore } from '@/stores/setting'
 import { getShortcutKey, useEventListener } from '@/hooks/event'
-import { checkAndUpgradeSaveDict, checkAndUpgradeSaveSetting, cloneDeep, loadJsLib, sleep } from '@/utils'
+import { checkAndUpgradeSaveDict, checkAndUpgradeSaveSetting, cloneDeep, loadJsLib } from '@/utils'
 import BaseButton from '~/components/base/BaseButton.vue'
 import { getDefaultBaseState, useBaseStore } from '@/stores/base'
 import {
@@ -10,7 +10,6 @@ import {
   APP_VERSION,
   DefaultShortcutKeyMap,
   DictId,
-  IS_DEV,
   LIB_JS_URL,
   LOCAL_FILE_KEY,
   Old_Host,
@@ -33,6 +32,7 @@ import { usePracticeWordPersistence, usePracticeArticlePersistence } from '@/com
 import SettingItem from '~/components/setting/SettingItem.vue'
 import Form, { type FormType } from '~/components/base/form/Form.vue'
 import { Supabase } from '~/utils/supabase.ts'
+import BackupGateDialog from '@/components/dialog/BackupGateDialog.vue'
 
 let route = useRoute()
 let title = APP_NAME + ' 设置'
@@ -46,11 +46,7 @@ useSeoMeta({
   twitterDescription: title,
 })
 
-const emit = defineEmits<{
-  toggleDisabledDialogEscKey: [val: boolean]
-}>()
-
-const tabIndex = $ref(5)
+const tabIndex = $ref(0)
 const settingStore = useSettingStore()
 const runtimeStore = useRuntimeStore()
 const store = useBaseStore()
@@ -63,15 +59,8 @@ const gitLastCommitHash = ref(config?.public?.latestCommitHash)
 let editShortcutKey = $ref('')
 
 const disabledDefaultKeyboardEvent = $computed(() => {
-  return editShortcutKey && tabIndex === 6
+  return editShortcutKey && tabIndex === 7
 })
-
-watch(
-  () => disabledDefaultKeyboardEvent,
-  v => {
-    emit('toggleDisabledDialogEscKey', !!v)
-  }
-)
 
 // 监听编辑快捷键状态变化，自动聚焦输入框
 watch(
@@ -94,6 +83,7 @@ useEventListener('keydown', (e: KeyboardEvent) => {
   e.stopPropagation()
 
   let shortcutKey = getShortcutKey(e)
+
   // console.log('e', e, e.keyCode, e.ctrlKey, e.altKey, e.shiftKey)
   // console.log('key', shortcutKey)
 
@@ -134,12 +124,6 @@ function handleInputBlur() {
   editShortcutKey = ''
 }
 
-function handleBodyClick() {
-  if (editShortcutKey) {
-    editShortcutKey = ''
-  }
-}
-
 function focusShortcutInput() {
   // 找到当前正在编辑的快捷键输入框
   const inputElements = document.querySelectorAll('.set-key input')
@@ -161,18 +145,23 @@ function getShortcutKeyName(key: string): string {
     ToggleCollect: '切换收藏状态',
     NextChapter: '下一组',
     PreviousChapter: '上一组',
+    NextStep: '下一阶段',
     RepeatChapter: '重复本组',
     DictationChapter: '默写本组',
     PlayWordPronunciation: '播放发音',
     ToggleShowTranslate: '切换显示翻译',
     ToggleDictation: '切换默写模式',
     ToggleTheme: '切换主题',
-    ToggleToolbar: '切换底部工具栏',
-    TogglePanel: '切换面板',
+    ToggleConciseMode: '切换底部工具栏和右侧列表',
+    TogglePanel: '切换右侧列表',
     RandomWrite: '随机默写',
-    NextRandomWrite: '继续随机默写',
     KnowWord: '认识单词',
     UnknownWord: '不认识单词',
+    MasteredWord: '非常熟悉单词',
+    ChooseA: '选A',
+    ChooseB: '选B',
+    ChooseC: '选C',
+    ChooseD: '选D',
   }
 
   return shortcutKeyNameMap[key] || key
@@ -185,10 +174,11 @@ function resetShortcutKeyMap() {
 }
 
 let importLoading = $ref(false)
+let configLoading = $ref(false)
 
 const { loading: exportLoading, exportData } = useExport()
 
-function importJson(str: string, notice: boolean = true) {
+function importJson(str: string) {
   importLoading = true
   let obj = {
     version: -1,
@@ -240,7 +230,8 @@ function importJson(str: string, notice: boolean = true) {
         //todo 上报
       }
     }
-    notice && Toast.success('导入成功！')
+    showBackupGate = false
+    Toast.success('导入成功！')
   } catch (err) {
     return Toast.error('导入失败！')
   } finally {
@@ -248,20 +239,7 @@ function importJson(str: string, notice: boolean = true) {
   }
 }
 
-let timer = -1 as any
-async function beforeImport() {
-  if (!IS_DEV) {
-    importLoading = true
-    await exportData('已自动备份数据', 'TypeWords数据备份.zip')
-    await sleep(1500)
-  }
-  let d: HTMLDivElement = document.querySelector('#import')
-  d.click()
-  timer = setTimeout(() => (importLoading = false), 1000)
-}
-
 async function importData(e) {
-  clearTimeout(timer)
   importLoading = true
   let file = e.target.files[0]
   if (!file) return (importLoading = false)
@@ -300,9 +278,7 @@ async function importData(e) {
       }
 
       const str = await dataFile.async('string')
-      importJson(str, false)
-
-      Toast.success('导入成功！')
+      importJson(str)
     } catch (e) {
       Toast.error(e?.message || e || '导入失败')
     } finally {
@@ -316,6 +292,21 @@ async function importData(e) {
 
 let isNewHost = $ref(false)
 let showTransfer = $ref(false)
+let showBackupGate = $ref(false)
+let pendingNextAction = $ref<'import' | 'supabase_save' | ''>('')
+
+function openImportGate() {
+  pendingNextAction = 'import'
+  showBackupGate = true
+}
+
+function openSupabaseSaveGate() {
+  sbFormRef?.validate(valid => {
+    if (!valid) return
+    pendingNextAction = 'supabase_save'
+    showBackupGate = true
+  })
+}
 
 onMounted(() => {
   isNewHost = window.location.host !== Old_Host
@@ -372,59 +363,57 @@ const canSyncToServe = $computed(() => {
   return audioFileIdList.length === 0
 })
 
-let configLoading = $ref(false)
-function saveSbConfig() {
-  sbFormRef?.validate(async valid => {
-    if (valid) {
-      if (configLoading) return
-      configLoading = true
-      Supabase.saveConfig(sbForm?.url, sbForm?.key)
-      // 重新初始化 Supabase 实例
-      Supabase.instance = null
-      const supabase = Supabase.getInstance()
-      try {
-        // 检测 typewords_data 表是否存在
-        const { data: existingData, error: checkError } = await supabase.from('typewords_data').select('type')
-        if (checkError) {
-          Supabase.setStatus('error', checkError?.message ?? '表不存在')
-          sbStatus = Supabase.getStatus()
-          Toast.error('表不存在')
-        } else {
-          // 表已存在，检测是否需要插入默认数据
-          const rows = (existingData ?? []) as { type: string }[]
-          const existingTypes = rows.map(d => d.type)
-          const defaultData = [
-            { type: 'dict', data: {} },
-            { type: 'setting', data: {} },
-            { type: 'practice_word', data: {} },
-            { type: 'practice_article', data: {} },
-          ]
-          for (const item of defaultData) {
-            if (!existingTypes.includes(item.type)) {
-              await (supabase as any).from('typewords_data').insert(item)
-            }
-          }
-          Supabase.setStatus('success')
-          sbStatus = Supabase.getStatus()
-          Toast.success('保存成功')
-          transferOk()
+async function doSaveSbConfig() {
+  if (configLoading) return
+  showBackupGate = false
+  configLoading = true
+  Supabase.saveConfig(sbForm?.url, sbForm?.key)
+  // 重新初始化 Supabase 实例
+  Supabase.instance = null
+  const supabase = Supabase.getInstance()
+  try {
+    // 检测 typewords_data 表是否存在
+    const { data: existingData, error: checkError } = await supabase.from('typewords_data').select('type')
+    if (checkError) {
+      Supabase.setStatus('error', checkError?.message ?? '表不存在')
+      sbStatus = Supabase.getStatus()
+      Toast.error('表不存在')
+    } else {
+      // 表已存在，检测是否需要插入默认数据
+      const rows = (existingData ?? []) as { type: string }[]
+      const existingTypes = rows.map(d => d.type)
+      const defaultData = [
+        { type: 'dict', data: {} },
+        { type: 'setting', data: {} },
+        { type: 'practice_word', data: {} },
+        { type: 'practice_article', data: {} },
+      ]
+      for (const item of defaultData) {
+        if (!existingTypes.includes(item.type)) {
+          await (supabase as any).from('typewords_data').insert(item)
         }
-      } catch (error) {
-        const msg = (error as Error)?.message ?? String(error)
-        Supabase.setStatus('error', msg)
-        sbStatus = Supabase.getStatus()
-        Toast.error('出现错误：' + msg)
-      } finally {
-        configLoading = false
       }
+      Supabase.setStatus('success')
+      sbStatus = Supabase.getStatus()
+      Toast.success('保存成功')
+      transferOk()
     }
-  })
+  } catch (error) {
+    const msg = (error as Error)?.message ?? String(error)
+    Supabase.setStatus('error', msg)
+    sbStatus = Supabase.getStatus()
+    Toast.error('出现错误：' + msg)
+  } finally {
+    configLoading = false
+  }
 }
 
 function removeSbConfig() {
   sbFormRef?.validate(async valid => {
     if (valid) {
       Supabase.removeConfig()
+      sbForm.url = ''
+      sbForm.key = ''
       sbStatus = { status: 'idle', statusMessage: undefined }
       Toast.success('清除成功')
       setTimeout(() => {
@@ -462,18 +451,20 @@ function removeSbConfig() {
               <IconFluentDatabasePerson20Regular />
               <span>{{ $t('data_management') }}</span>
             </div>
-
             <div class="tab" :class="tabIndex === 6 && 'active'" @click="tabIndex = 6">
+              <IconFluentCloudSync20Regular />
+              <span>数据同步</span>
+            </div>
+            <div class="tab" :class="tabIndex === 7 && 'active'" @click="tabIndex = 7">
               <IconFluentKeyboardLayoutFloat20Regular />
               <span>{{ $t('shortcut_settings') }}</span>
             </div>
-
             <div
               class="tab"
-              :class="tabIndex === 7 && 'active'"
+              :class="tabIndex === 8 && 'active'"
               @click="
                 () => {
-                  tabIndex = 7
+                  tabIndex = 8
                   runtimeStore.isNew = false
                   set(APP_VERSION.key, APP_VERSION.version)
                 }
@@ -483,7 +474,7 @@ function removeSbConfig() {
               <span>{{ $t('update_log') }}</span>
               <div class="red-point" v-if="runtimeStore.isNew"></div>
             </div>
-            <div class="tab" :class="tabIndex === 8 && 'active'" @click="tabIndex = 8">
+            <div class="tab" :class="tabIndex === 9 && 'active'" @click="tabIndex = 9">
               <IconFluentPerson20Regular />
               <span>{{ $t('about') }}</span>
             </div>
@@ -497,8 +488,6 @@ function removeSbConfig() {
           <ArticleSetting v-if="tabIndex === 3" />
 
           <div v-if="tabIndex === 5">
-            <SettingItem mainTitle="数据管理" />
-
             <!--            导出数据-->
             <SettingItem
               title="导出数据"
@@ -512,26 +501,7 @@ function removeSbConfig() {
 
             <!--            导入数据-->
             <SettingItem title="导出数据">
-              <div class="flex" v-if="!isIOS()">
-                <BaseButton @click="beforeImport" :loading="importLoading">{{ $t('import_data_restore') }}</BaseButton>
-                <input
-                  type="file"
-                  id="import"
-                  class="w-0 h-0 opacity-0"
-                  accept="application/json,.zip,application/zip"
-                  @change="importData"
-                />
-              </div>
-              <div class="inline-block relative" v-else>
-                <BaseButton :loading="importLoading">{{ $t('import_data_restore') }}</BaseButton>
-                <input
-                  type="file"
-                  id="import"
-                  class="absolute left-0 top-0 w-full h-full opacity-0"
-                  accept="application/json,.zip,application/zip"
-                  @change="importData"
-                />
-              </div>
+              <BaseButton @click="openImportGate" :loading="importLoading">{{ $t('import_data_restore') }}</BaseButton>
             </SettingItem>
             <div>
               请注意，导入数据将<b class="text-red"> 完全覆盖 </b
@@ -548,51 +518,7 @@ function removeSbConfig() {
                 请注意，如果本地已有使用记录，请先备份当前数据，迁移数据后将<b class="text-red"> 完全覆盖 </b
                 >当前所有数据，请谨慎操作。
               </div>
-              <div class="line my-3"></div>
             </template>
-
-            <SettingItem mainTitle="数据同步" />
-
-            <!--          Supabase 设置  -->
-            <div class="mt-3">
-              <SettingItem title="Supabase 配置" desc="网站不会上传您的 url 和 key，只保存在浏览器本地(Local storage)">
-                <div v-if="sbStatus.status !== 'idle'" class="mt-2 text-sm">
-                  <span v-if="sbStatus.status === 'success'">同步状态：成功</span>
-                  <span v-else-if="sbStatus.status === 'error'" class="text-red">
-                    同步状态：失败{{ sbStatus.statusMessage ? `（${sbStatus.statusMessage}）` : '' }}
-                  </span>
-                  <span v-else-if="sbStatus.status === 'syncing'">同步状态：同步中…</span>
-                </div>
-              </SettingItem>
-
-              <p>
-                Supabase 使用教程：
-                <a href="https://www.kdocs.cn/l/cduLx52XXXgw" target="_blank">https://www.kdocs.cn/l/cduLx52XXXgw</a>
-              </p>
-
-              <div class="relative">
-                <Form ref="sbFormRef" :rules="sbFormRules" :model="sbForm">
-                  <FormItem label="Url" prop="url">
-                    <BaseInput v-model="sbForm.url" />
-                  </FormItem>
-                  <FormItem label="Key" prop="key">
-                    <BaseInput v-model="sbForm.key" />
-                  </FormItem>
-                </Form>
-                <div class="flex justify-end">
-                  <BaseButton @click="removeSbConfig" :disabled="!canSyncToServe">删除配置</BaseButton>
-                  <BaseButton @click="saveSbConfig" :loading="configLoading" :disabled="!canSyncToServe"
-                    >保存配置</BaseButton
-                  >
-                </div>
-                <div
-                  class="absolute top-0 left-0 w-full h-full bg-white opacity-80 cursor-not-allowed z-10 center rounded-md"
-                  v-if="!canSyncToServe"
-                >
-                  <div class="text-red">检测到自定义文章里面有自定义音频，无法使用同步功能</div>
-                </div>
-              </div>
-            </div>
 
             <div class="line my-3"></div>
             <SettingItem title="其他"> </SettingItem>
@@ -603,7 +529,48 @@ function removeSbConfig() {
             </div>
           </div>
 
-          <div class="body" v-if="tabIndex === 6">
+          <div v-if="tabIndex === 6">
+            <!--          Supabase 设置  -->
+            <SettingItem title="Supabase 配置" desc="网站不会上传您的 url 和 key，只保存在浏览器本地(Local storage)">
+              <div v-if="sbStatus.status !== 'idle'" class="mt-2 text-sm">
+                <span v-if="sbStatus.status === 'success'">同步状态：成功</span>
+                <span v-else-if="sbStatus.status === 'error'" class="text-red">
+                  同步状态：失败{{ sbStatus.statusMessage ? `（${sbStatus.statusMessage}）` : '' }}
+                </span>
+                <span v-else-if="sbStatus.status === 'syncing'">同步状态：同步中…</span>
+              </div>
+            </SettingItem>
+
+            <p>
+              Supabase 使用教程：
+              <a href="https://www.kdocs.cn/l/cduLx52XXXgw" target="_blank">https://www.kdocs.cn/l/cduLx52XXXgw</a>
+            </p>
+
+            <div class="relative">
+              <Form ref="sbFormRef" :rules="sbFormRules" :model="sbForm">
+                <FormItem label="Url" prop="url">
+                  <BaseInput v-model="sbForm.url" />
+                </FormItem>
+                <FormItem label="Key" prop="key">
+                  <BaseInput v-model="sbForm.key" />
+                </FormItem>
+              </Form>
+              <div class="flex justify-end">
+                <BaseButton @click="removeSbConfig" :disabled="!canSyncToServe">删除配置</BaseButton>
+                <BaseButton @click="openSupabaseSaveGate" :loading="configLoading" :disabled="!canSyncToServe"
+                  >保存配置</BaseButton
+                >
+              </div>
+              <div
+                class="absolute top-0 left-0 w-full h-full bg-white opacity-80 cursor-not-allowed z-10 center rounded-md"
+                v-if="!canSyncToServe"
+              >
+                <div class="text-red">检测到自定义文章里面有自定义音频，无法使用同步功能</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="body" v-if="tabIndex === 7">
             <div class="row">
               <label class="main-title">{{ $t('function') }}</label>
               <div class="wrapper">{{ $t('shortcut_key') }}</div>
@@ -642,9 +609,9 @@ function removeSbConfig() {
           </div>
 
           <!--          日志-->
-          <Log v-if="tabIndex === 7" />
+          <Log v-if="tabIndex === 8" />
 
-          <div v-if="tabIndex === 8" class="center flex-col">
+          <div v-if="tabIndex === 9" class="center flex-col">
             <About />
             <div class="text-md color-gray mt-10">Build {{ gitLastCommitHash }}</div>
           </div>
@@ -653,6 +620,24 @@ function removeSbConfig() {
     </div>
   </BasePage>
 
+  <BackupGateDialog v-model="showBackupGate">
+    <template v-slot="{ disabled }">
+      <BaseButton @click="doSaveSbConfig" :disabled="disabled" v-if="pendingNextAction === 'supabase_save'"
+        >保存配置</BaseButton
+      >
+      <div class="inline-block relative ml-4" v-else>
+        <BaseButton :disabled="disabled" :loading="importLoading">{{ $t('import_data_restore') }}</BaseButton>
+        <input
+          v-if="!disabled"
+          type="file"
+          id="import"
+          class="absolute left-0 top-0 w-full h-full opacity-0"
+          accept="application/json,.zip,application/zip"
+          @change="importData"
+        />
+      </div>
+    </template>
+  </BackupGateDialog>
   <MigrateDialog v-model="showTransfer" @ok="transferOk" />
 </template>
 

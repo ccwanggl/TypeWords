@@ -36,7 +36,7 @@ export function useExport() {
 
     try {
       const JSZip = await loadJsLib('JSZip', LIB_JS_URL.JSZIP)
-      let data:any = {
+      let data: any = {
         version: EXPORT_DATA_KEY.version,
         val: {
           setting: {

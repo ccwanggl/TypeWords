@@ -111,6 +111,7 @@ export const DefaultShortcutKeyMap = {
   [ShortcutKey.ToggleCollect]: 'Enter',
   [ShortcutKey.PreviousChapter]: 'Ctrl+⬅',
   [ShortcutKey.NextChapter]: 'Ctrl+➡',
+  [ShortcutKey.NextStep]: 'Shift+➡',
   [ShortcutKey.RepeatChapter]: 'Ctrl+Enter',
   [ShortcutKey.DictationChapter]: 'Alt+Enter',
   [ShortcutKey.PlayWordPronunciation]: 'Ctrl+P',

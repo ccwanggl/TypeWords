@@ -781,6 +781,7 @@ useEvents([
 
   [ShortcutKey.RepeatChapter, repeat],
   [ShortcutKey.NextChapter, continueStudy],
+  [ShortcutKey.NextStep, skipStep],
   [ShortcutKey.ToggleShowTranslate, () => (settingStore.translate = !settingStore.translate)],
   [ShortcutKey.ToggleDictation, () => (settingStore.dictation = !settingStore.dictation)],
   [ShortcutKey.ToggleTheme, toggleTheme],

@@ -23,6 +23,7 @@ export enum ShortcutKey {
   ToggleCollect = 'ToggleCollect',
   NextChapter = 'NextChapter',
   PreviousChapter = 'PreviousChapter',
+  NextStep = 'NextStep',
   RepeatChapter = 'RepeatChapter',
   DictationChapter = 'DictationChapter',
   PlayWordPronunciation = 'PlayWordPronunciation',
@@ -38,7 +39,7 @@ export enum ShortcutKey {
   ChooseA = 'ChooseA',
   ChooseB = 'ChooseB',
   ChooseC = 'ChooseC',
-  ChooseD = 'ChooseD'
+  ChooseD = 'ChooseD',
 }
 
 export enum TranslateEngine {
