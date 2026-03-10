@@ -269,7 +269,7 @@ export function useInit() {
 
       const localHash = normalizeHash(await get(WEBSITE_VERSION_HASH))
       if (localHash !== currentHash) {
-        await saveHashSnapshot(localHash, '')
+        await saveHashSnapshot(localHash ?? currentHash, '')
       }
       await set(WEBSITE_VERSION_HASH, currentHash)
     } catch (e) {
