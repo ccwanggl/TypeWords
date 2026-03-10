@@ -92,7 +92,7 @@ async function loadDict() {
         return Toast.warning('没有单词可学习！')
       }
       store.changeDict(dict)
-      await initData(getCurrentStudyWord(), true)
+      await initData(null, true)
       loading = false
     } else {
       router.push('/words')
@@ -113,7 +113,7 @@ watch(
 const onvisibilitychange = async () => {
   isFocus = !document.hidden
   if (isFocus) {
-    const d = await wordPersistence.refreshFromRemote()
+    const d = await wordPersistence.fetch()
     if (d) {
       taskWords = Object.assign(taskWords, d.taskWords)
       data = Object.assign(data, d.practiceData)
@@ -125,7 +125,7 @@ const onvisibilitychange = async () => {
 onMounted(async () => {
   //如果是从单词学习主页过来的，就直接使用；否则等待加载
   if (runtimeStore.routeData) {
-    await initData(runtimeStore.routeData.taskWords, true)
+    await initData(null, true)
   } else {
     loading = true
   }
@@ -141,7 +141,7 @@ onMounted(async () => {
 onUnmounted(() => {
   document.removeEventListener('visibilitychange', onvisibilitychange)
   if (getPracticeWordCacheLocal()) {
-    savePracticeData('onUnmounted')
+    savePracticeDataIns('onUnmounted')
   }
   timer && clearInterval(timer)
   watchRefList.map(v => v.stop())
@@ -186,12 +186,19 @@ watchOnce(
 )
 
 let isIniting = ref(true)
-async function initData(initVal: TaskWords, init: boolean = false) {
+async function initData(initVal?: TaskWords, init: boolean = false) {
   console.log('initData')
   isIniting.value = true
-  const d = init ? await wordPersistence.load() : null
   //只有初始化时，才读取缓存（本地 + 可选 Supabase）
-  if (d && init) {
+  if (init) {
+    let d = runtimeStore.routeData
+    if (!d) {
+      d = await wordPersistence.load()
+    }
+    if (!d || !(d.practiceData && d.statStoreData)) {
+      initData(getCurrentStudyWord())
+      return
+    }
     taskWords = Object.assign(taskWords, d.taskWords)
     //这里直接赋值的话，provide后的inject获取不到最新值
     data = Object.assign(data, d.practiceData)
@@ -582,7 +589,7 @@ function setWordCard(rating: number, wordStr = word.word, times?: number) {
   // )
 }
 
-const savePracticeData = debounce((where?) => {
+async function savePracticeDataIns(where?) {
   const stages = WordPracticeModeStageMap[settingStore.wordPracticeMode]
   if (
     data.index === 0 &&
@@ -594,13 +601,16 @@ const savePracticeData = debounce((where?) => {
   }
   if (showStatDialog) return
   // console.log('savePracticeData', where)
-  wordPersistence.save({
+  runtimeStore.globalLoading = true
+  await wordPersistence.save({
     taskWords,
     practiceData: data,
     statStoreData: statStore.$state,
   })
-  //改这个延迟，要同步修改结算时的延迟
-}, 500)
+  runtimeStore.globalLoading = false
+}
+
+const savePracticeData = debounce(savePracticeDataIns, 500)
 
 function onKeyUp(e: KeyboardEvent) {
   // console.log('onKeyUp', e)

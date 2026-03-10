@@ -7,17 +7,18 @@ import type {
   PracticeWordCacheStored,
 } from '@/utils/cache'
 import {
-  PRACTICE_ARTICLE_CACHE,
-  PRACTICE_WORD_CACHE,
   getPracticeArticleCacheLocal,
   getPracticeArticleCacheLocalWithMeta,
   getPracticeWordCacheLocal,
   getPracticeWordCacheLocalWithMeta,
+  PRACTICE_ARTICLE_CACHE,
+  PRACTICE_WORD_CACHE,
   setPracticeArticleCacheLocal,
   setPracticeWordCacheLocal,
 } from '@/utils/cache'
 import { Supabase } from '@/utils/supabase'
-import { compareTimestamps, parseTimestamp, shouldFetchRemote } from '@/utils/sync'
+import { compareTimestamps, shouldFetchRemote } from '@/utils/sync'
+import { CompareResult } from '~/types/enum'
 
 const PRACTICE_TYPE_WORD = 'practice_word'
 const PRACTICE_TYPE_ARTICLE = 'practice_article'
@@ -93,7 +94,9 @@ async function upsertPracticeData(
   const data_version = getVersion(kind)
   try {
     const client = Supabase.getInstance() as any
-    const { error } = await client.from('typewords_data').upsert({ type, data, updated_at, data_version }, { onConflict: 'type' })
+    const { error } = await client
+      .from('typewords_data')
+      .upsert({ type, data, updated_at, data_version }, { onConflict: 'type' })
     if (error) {
       Supabase.setStatus('error', error?.message ?? String(error))
       return
@@ -136,15 +139,19 @@ function serializePracticeWordCache(data: PracticeWordCache | null): PracticeWor
 
 function restorePracticeWordCache(data: PracticeWordCacheStored | null): PracticeWordCache | null {
   if (!data) return null
-  if (!isCompactPracticeWordCache(data)) return data
-
+  if (!isCompactPracticeWordCache(data)) {
+    if (!data.taskWords?.new.length && !data.taskWords?.review.length) return null
+    return data
+  }
+  if (!data.taskWordsStr?.new.length && !data.taskWordsStr?.review.length) return null
   const wordMap = createWordMap()
   const taskWords: TaskWords = {
     new: restoreWords(data.taskWordsStr.new, wordMap),
     review: restoreWords(data.taskWordsStr.review, wordMap),
   }
-  const words = restoreWords(data.practiceData?.wordsStr??[], wordMap)
-  const wrongWords = restoreWords(data.practiceData?.wrongWordsStr??[], wordMap)
+
+  const words = restoreWords(data.practiceData?.wordsStr ?? [], wordMap)
+  const wrongWords = restoreWords(data.practiceData?.wrongWordsStr ?? [], wordMap)
   const index = words.length ? Math.min(data.practiceData.index, words.length - 1) : 0
 
   const practiceData: PracticeData = {
@@ -162,40 +169,57 @@ function restorePracticeWordCache(data: PracticeWordCacheStored | null): Practic
 
 export function usePracticeWordPersistence() {
   async function load(): Promise<PracticeWordCache | null> {
-    const remoteMeta = await fetchMetaFromSupabase('word')
-    const localMeta = getPracticeWordCacheLocalWithMeta()
-    const currentVersion = PRACTICE_WORD_CACHE.version
-    const compareResult = compareTimestamps(localMeta?.updated_at, remoteMeta?.updated_at)
-
-    if (remoteMeta?.data_version == null && localMeta?.val) {
-      const updated_at = localMeta.updated_at ?? new Date().toISOString()
-      setPracticeWordCacheLocal(localMeta.val, updated_at)
-      void upsertPracticeData('word', localMeta.val, updated_at)
-      return restorePracticeWordCache(localMeta.val)
-    }
-
-    if (remoteMeta && shouldFetchRemote(localMeta?.updated_at, remoteMeta?.updated_at, remoteMeta?.data_version, currentVersion)) {
+    const compareResult = await fetchCompareResult()
+    if (compareResult === CompareResult.RemoteNewer) {
       const remote = await fetchFromSupabase('word')
-      const remoteData = remote?.data != null && typeof remote.data === 'object' ? (remote.data as PracticeWordCacheStored) : null
+      const remoteData = remote?.data as PracticeWordCacheStored
+      setPracticeWordCacheLocal(remoteData, remote?.updated_at)
+      return restorePracticeWordCache(remoteData)
+    } else {
+      return restorePracticeWordCache(getPracticeWordCacheLocal())
+    }
+  }
+
+  async function getLocalDataCompact(): Promise<PracticeWordCacheStored> {
+    return getPracticeWordCacheLocal()
+  }
+
+  async function fetch(): Promise<PracticeWordCache | null> {
+    const compareResult = await fetchCompareResult()
+    if (compareResult === CompareResult.RemoteNewer) {
+      const remote = await fetchFromSupabase('word')
+      const remoteData = remote?.data as PracticeWordCacheStored
       setPracticeWordCacheLocal(remoteData, remote?.updated_at)
       return restorePracticeWordCache(remoteData)
     }
-
-    if (localMeta?.val) {
-      if (compareResult === 'local_newer') {
-        void upsertPracticeData('word', localMeta.val, localMeta.updated_at ?? new Date().toISOString())
-      }
-      return restorePracticeWordCache(localMeta.val)
-    }
-
-    return restorePracticeWordCache(getPracticeWordCacheLocal())
+    return null
   }
 
-  function save(data: PracticeWordCache | null): void {
+  async function fetchCompareResult(): Promise<CompareResult> {
+    const remoteMeta = await fetchMetaFromSupabase('word')
+    if (!remoteMeta) return CompareResult.NoRemote
+    const localMeta = getPracticeWordCacheLocalWithMeta()
+    if (!localMeta) return CompareResult.LocalNewer
+    const currentVersion = PRACTICE_WORD_CACHE.version
+    return shouldFetchRemoteV2(localMeta?.updated_at, remoteMeta?.updated_at, remoteMeta?.data_version, currentVersion)
+  }
+
+  async function save(data: PracticeWordCache | null) {
+    const compareResult = await fetchCompareResult()
     const updated_at = new Date().toISOString()
     const compactData = serializePracticeWordCache(data)
-    setPracticeWordCacheLocal(compactData, updated_at)
-    void upsertPracticeData('word', compactData, updated_at)
+    if (compareResult === CompareResult.NoRemote) {
+      setPracticeWordCacheLocal(compactData, updated_at)
+    } else if (compareResult === CompareResult.Equal) {
+      setPracticeWordCacheLocal(compactData, updated_at)
+      await upsertPracticeData('word', compactData, updated_at)
+    } else if (compareResult === CompareResult.LocalNewer) {
+      setPracticeWordCacheLocal(compactData, updated_at)
+      await upsertPracticeData('word', compactData, updated_at)
+    } else if (compareResult === CompareResult.RemoteNewer) {
+      const remote = await fetchFromSupabase('word')
+      setPracticeWordCacheLocal(remote?.data as PracticeWordCacheStored, remote?.updated_at)
+    }
   }
 
   function clear(): void {
@@ -208,7 +232,7 @@ export function usePracticeWordPersistence() {
     return load()
   }
 
-  return { load, save, clear, refreshFromRemote }
+  return { load, save, clear, refreshFromRemote, fetch, getLocalDataCompact }
 }
 
 export function usePracticeArticlePersistence() {
@@ -225,9 +249,13 @@ export function usePracticeArticlePersistence() {
       return localMeta.val
     }
 
-    if (remoteMeta && shouldFetchRemote(localMeta?.updated_at, remoteMeta?.updated_at, remoteMeta?.data_version, currentVersion)) {
+    if (
+      remoteMeta &&
+      shouldFetchRemote(localMeta?.updated_at, remoteMeta?.updated_at, remoteMeta?.data_version, currentVersion)
+    ) {
       const remote = await fetchFromSupabase('article')
-      const remoteData = remote?.data != null && typeof remote.data === 'object' ? (remote.data as PracticeArticleCache) : null
+      const remoteData =
+        remote?.data != null && typeof remote.data === 'object' ? (remote.data as PracticeArticleCache) : null
       setPracticeArticleCacheLocal(remoteData, remote?.updated_at)
       return remoteData
     }

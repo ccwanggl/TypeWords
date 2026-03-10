@@ -11,6 +11,7 @@ export interface RuntimeState {
   routeData: any
   isNew: boolean
   isError: boolean
+  globalLoading: boolean
 }
 
 export const useRuntimeStore = defineStore('runtime', {
@@ -24,6 +25,7 @@ export const useRuntimeStore = defineStore('runtime', {
       excludeRoutes: [],
       isNew: false,
       isError: false,
+      globalLoading: false,
     }
   },
   actions: {

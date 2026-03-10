@@ -1,3 +1,10 @@
+export enum CompareResult {
+  RemoteNewer = 0,
+  LocalNewer = 1,
+  Equal = 2,
+  NoRemote = 3,
+}
+
 export enum DictType {
   collect = 'collect',
   simple = 'simple',

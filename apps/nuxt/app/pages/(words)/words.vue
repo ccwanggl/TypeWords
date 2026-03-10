@@ -46,6 +46,7 @@ import { deleteDict } from '@/apis/dict.ts'
 import OptionButton from '@/components/base/OptionButton.vue'
 import { usePracticeWordPersistence } from '@/composables/usePracticePersistence'
 import { WordPracticeMode } from '@/types/enum.ts'
+import type { PracticeWordCache } from '~/utils/cache.ts'
 
 const store = useBaseStore()
 const settingStore = useSettingStore()
@@ -61,15 +62,19 @@ const shouldShowDialogPracticeMode = $ref([WordPracticeMode.Shuffle, WordPractic
 useHead({
   title: APP_NAME + ' 单词',
 })
-let currentStudy = $ref({
-  new: [],
-  review: [],
-})
 
+let practiceData = $ref<PracticeWordCache>({
+  taskWords: {
+    new: [],
+    review: [],
+  },
+} as any)
+
+// runtimeStore.globalLoading练习界面，退出时会调用一个保存，可能会卡住。当调用完成再init
 watch(
-  () => store.load,
-  n => {
-    if (n) {
+  [() => store.load, () => runtimeStore.globalLoading],
+  ([a, b]) => {
+    if (a && !b) {
       init()
       _nextTick(async () => {
         const Shepherd = await loadJsLib('Shepherd', LIB_JS_URL.SHEPHERD)
@@ -102,6 +107,17 @@ watch(
   { immediate: true }
 )
 
+async function onvisibilitychange() {
+  if (!document.hidden) {
+    //当页面可见时，检查是否需要从远程拉取数据
+    const d = await wordPersistence.fetch()
+    if (d) {
+      practiceData = d
+      isSaveData = true
+    }
+  }
+}
+
 async function init() {
   if (AppEnv.CAN_REQUEST) {
     let res = await myDictList({ type: 'word' })
@@ -109,24 +125,23 @@ async function init() {
       store.setState(Object.assign(store.$state, res.data))
     }
   }
+
+  document.removeEventListener('visibilitychange', onvisibilitychange)
+  document.addEventListener('visibilitychange', onvisibilitychange)
+
   if (store.word.studyIndex >= 3) {
     if (!store.sdict.custom && !store.sdict.words.length) {
       store.word.bookList[store.word.studyIndex] = await _getDictDataByUrl(store.sdict)
     }
   }
 
-  if (!currentStudy.new.length && store.sdict.words.length) {
+  if (!practiceData?.taskWords.new.length && store.sdict.words.length) {
     const d = await wordPersistence.load()
     if (d) {
-      currentStudy = d.taskWords
+      practiceData = d
       isSaveData = true
-      if (!currentStudy?.new.length && !currentStudy?.review.length) {
-        isSaveData = false
-        wordPersistence.clear()
-        init()
-      }
     } else {
-      currentStudy = getCurrentStudyWord()
+      practiceData.taskWords = getCurrentStudyWord()
     }
   }
   loading = false
@@ -160,7 +175,7 @@ function startPractice(practiceMode: WordPracticeMode, resetCache: boolean = fal
     })
     //把是否是第一次设置为false
     settingStore.first = false
-    nav(WordPracticeModeUrlMap[practiceMode] + '/' + store.sdict.id, {}, { taskWords: currentStudy })
+    nav(WordPracticeModeUrlMap[practiceMode] + '/' + store.sdict.id, {}, practiceData)
   } else {
     window.umami?.track('no-dict')
     Toast.warning('请先选择一本词典')
@@ -247,7 +262,7 @@ async function savePracticeSetting() {
   isSaveData = false
   wordPersistence.clear()
   await store.changeDict(runtimeStore.editDict)
-  currentStudy = getCurrentStudyWord()
+  practiceData.taskWords = getCurrentStudyWord()
 }
 
 async function onShufflePracticeSettingOk(total) {
@@ -265,14 +280,14 @@ async function onShufflePracticeSettingOk(total) {
   })
 
   let ignoreList = [store.allIgnoreWords, store.knownWords][settingStore.ignoreSimpleWord ? 0 : 1]
-  currentStudy.review = shuffle(
+  practiceData.taskWords.review = shuffle(
     store.sdict.words.slice(0, store.sdict.lastLearnIndex).filter(v => !ignoreList.includes(v.word))
   ).slice(0, total)
   nav(
     WordPracticeModeUrlMap[editingWordPracticeMode] + '/' + store.sdict.id,
     {},
     {
-      taskWords: currentStudy,
+      ...practiceData,
       total, //用于再来一组时，随机出正确的长度，因为练习中可能会点击已掌握，导致重学一遍之后长度变少，如果再来一组，此时长度就不正确
     }
   )
@@ -286,7 +301,7 @@ async function saveLastPracticeIndex(e) {
   isSaveData = false
   wordPersistence.clear()
   await store.changeDict(runtimeStore.editDict)
-  currentStudy = getCurrentStudyWord()
+  practiceData.taskWords = getCurrentStudyWord()
 }
 
 const { data: recommendDictList, isFetching } = useFetch(resourceWrap(DICT_LIST.WORD.RECOMMENDED)).json()
@@ -304,6 +319,10 @@ const systemPracticeText = $computed(() => {
 let isOldHost = $ref(false)
 onMounted(() => {
   isOldHost = window.location.host === Old_Host
+})
+
+onUnmounted(() => {
+  document.removeEventListener('visibilitychange', onvisibilitychange)
 })
 </script>
 
@@ -412,11 +431,11 @@ onMounted(() => {
         </div>
         <div class="flex mt-4 justify-between">
           <div class="stat">
-            <div class="num">{{ currentStudy.new.length }}</div>
+            <div class="num">{{ practiceData?.taskWords?.new?.length }}</div>
             <div class="txt">{{ $t('new_words') }}</div>
           </div>
           <div class="stat">
-            <div class="num">{{ currentStudy.review.length }}</div>
+            <div class="num">{{ practiceData?.taskWords?.review?.length }}</div>
             <div class="txt">{{ $t('review') }}</div>
           </div>
         </div>
@@ -451,7 +470,7 @@ onMounted(() => {
               <BaseButton
                 class="w-full"
                 v-if="settingStore.wordPracticeMode !== WordPracticeMode.Review"
-                :disabled="!currentStudy.review.length"
+                :disabled="!practiceData?.taskWords?.review?.length"
                 @click="startPractice(WordPracticeMode.Review, true)"
               >
                 {{ $t('review') }}
@@ -593,7 +612,7 @@ onMounted(() => {
 
   <ChangeLastPracticeIndexDialog v-model="showChangeLastPracticeIndexDialog" @ok="saveLastPracticeIndex" />
 
-  <PracticeWordListDialog :data="currentStudy" v-model="showPracticeWordListDialog" />
+  <PracticeWordListDialog :data="practiceData?.taskWords" v-model="showPracticeWordListDialog" />
 
   <ShufflePracticeSettingDialog
     v-model="showShufflePracticeSettingDialog"
