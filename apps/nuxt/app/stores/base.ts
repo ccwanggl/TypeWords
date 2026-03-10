@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import type { Dict, Word } from '@/types/types'
+import type { Dict, FSRSData, Word } from '@/types/types'
 import { _getStudyProgress, checkAndUpgradeSaveDict, shakeCommonDict } from '@/utils'
 import { shallowReactive } from 'vue'
 import { getDefaultDict } from '@/types/func'
@@ -7,6 +7,7 @@ import { get, set } from 'idb-keyval'
 import { AppEnv, DictId, SAVE_DICT_KEY } from '@/config/env'
 import { add2MyDict, dictListVersion, myDictList } from '@/apis'
 import Toast from '@/components/base/toast/Toast'
+import type { Card } from 'ts-fsrs'
 
 export interface BaseState {
   simpleWords: string[]
@@ -20,6 +21,7 @@ export interface BaseState {
     studyIndex: number
   }
   dictListVersion: number
+  fsrsData: Record<string, Card>
 }
 
 export const getDefaultBaseState = (): BaseState => ({
@@ -86,6 +88,7 @@ export const getDefaultBaseState = (): BaseState => ({
     studyIndex: -1,
   },
   dictListVersion: 1,
+  fsrsData: {},
 })
 
 export const useBaseStore = defineStore('base', {
@@ -108,10 +111,16 @@ export const useBaseStore = defineStore('base', {
     knownWords(): string[] {
       return this.known.words.map((v: Word) => v.word.toLowerCase())
     },
-    allIgnoreWords() {
+    allIgnoreWords(): string[] {
       return this.known.words
         .map((v: Word) => v.word.toLowerCase())
         .concat(this.simpleWords.map((v: string) => v.toLowerCase()))
+    },
+    knownWordsSet(): Set<string> {
+      return new Set<string>(this.known.words.map((v: Word) => v.word))
+    },
+    allIgnoreWordsSet(): Set<string> {
+      return new Set<string>(this.known.words.map((v: Word) => v.word).concat(this.simpleWords.map((v: string) => v)))
     },
     sdict(): Dict {
       if (this.word.studyIndex >= 0) {
@@ -138,7 +147,7 @@ export const useBaseStore = defineStore('base', {
       return Math.ceil((this.sdict.length - this.sdict.lastLearnIndex) / this.sdict.perDayStudyNumber)
     },
     sbook(): Dict {
-      return this.article.bookList[this.article.studyIndex] ?? {}
+      return this.article.bookList[this.article.studyIndex] ?? getDefaultDict()
     },
     currentBookProgress(): number {
       if (!this.sbook.length) return 0
@@ -158,6 +167,8 @@ export const useBaseStore = defineStore('base', {
         book.articles = shallowReactive(book.articles)
         book.statistics = shallowReactive(book.statistics)
       })
+      //必须先 reset, 只 $patch 无法将 state 恢复到默认值
+      this.$reset()
       this.$patch(obj)
     },
     async init() {

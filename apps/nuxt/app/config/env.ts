@@ -1,8 +1,10 @@
 import { offset } from '@floating-ui/dom'
 import { ShortcutKey, WordPracticeMode, WordPracticeStage } from '@/types/enum'
+import { Rating } from 'ts-fsrs'
 
 export const GITHUB = 'https://github.com/zyronon/TypeWords'
 export const Host = 'typewords.cc'
+export const Old_Host = '2study.top'
 export const EMAIL = 'zyronon@163.com'
 export const Origin = `https://${Host}`
 export const APP_NAME = 'Type Words'
@@ -61,7 +63,7 @@ export const SoundFileOptions = [
 ]
 export const APP_VERSION = {
   key: 'type-words-app-version',
-  version: 2,
+  version: 3,
 }
 export const SAVE_DICT_KEY = {
   key: 'typing-word-dict',
@@ -76,6 +78,9 @@ export const EXPORT_DATA_KEY = {
   version: 4,
 }
 export const LOCAL_FILE_KEY = 'typing-word-files'
+export const WEBSITE_VERSION_HASH = 'type-words-website-version-hash'
+export const BACKUP_INDEX_KEY = 'type-words-backup-index'
+export const BACKUP_KEY = 'type-words-backup-'
 
 export const TourConfig = {
   useModalOverlay: true,
@@ -109,6 +114,7 @@ export const DefaultShortcutKeyMap = {
   [ShortcutKey.ToggleCollect]: 'Enter',
   [ShortcutKey.PreviousChapter]: 'Ctrl+⬅',
   [ShortcutKey.NextChapter]: 'Ctrl+➡',
+  [ShortcutKey.NextStep]: 'Shift+➡',
   [ShortcutKey.RepeatChapter]: 'Ctrl+Enter',
   [ShortcutKey.DictationChapter]: 'Alt+Enter',
   [ShortcutKey.PlayWordPronunciation]: 'Ctrl+P',
@@ -120,6 +126,7 @@ export const DefaultShortcutKeyMap = {
   [ShortcutKey.RandomWrite]: 'Ctrl+R',
   [ShortcutKey.KnowWord]: '1',
   [ShortcutKey.UnknownWord]: '2',
+  [ShortcutKey.MasteredWord]: '3',
   [ShortcutKey.ChooseA]: '1',
   [ShortcutKey.ChooseB]: '2',
   [ShortcutKey.ChooseC]: '3',
@@ -134,19 +141,16 @@ export const WordPracticeModeStageMap: Record<WordPracticeMode, WordPracticeStag
   [WordPracticeMode.IdentifyOnly]: [
     WordPracticeStage.IdentifyNewWord,
     WordPracticeStage.IdentifyReview,
-    WordPracticeStage.IdentifyReviewAll,
     WordPracticeStage.Complete,
   ],
   [WordPracticeMode.DictationOnly]: [
     WordPracticeStage.DictationNewWord,
     WordPracticeStage.DictationReview,
-    WordPracticeStage.DictationReviewAll,
     WordPracticeStage.Complete,
   ],
   [WordPracticeMode.ListenOnly]: [
     WordPracticeStage.ListenNewWord,
     WordPracticeStage.ListenReview,
-    WordPracticeStage.ListenReviewAll,
     WordPracticeStage.Complete,
   ],
   [WordPracticeMode.System]: [
@@ -156,9 +160,6 @@ export const WordPracticeModeStageMap: Record<WordPracticeMode, WordPracticeStag
     WordPracticeStage.IdentifyReview,
     WordPracticeStage.ListenReview,
     WordPracticeStage.DictationReview,
-    WordPracticeStage.IdentifyReviewAll,
-    WordPracticeStage.ListenReviewAll,
-    WordPracticeStage.DictationReviewAll,
     WordPracticeStage.Complete,
   ],
   [WordPracticeMode.Shuffle]: [WordPracticeStage.Shuffle, WordPracticeStage.Complete],
@@ -166,25 +167,20 @@ export const WordPracticeModeStageMap: Record<WordPracticeMode, WordPracticeStag
     WordPracticeStage.IdentifyReview,
     WordPracticeStage.ListenReview,
     WordPracticeStage.DictationReview,
-    WordPracticeStage.IdentifyReviewAll,
-    WordPracticeStage.ListenReviewAll,
-    WordPracticeStage.DictationReviewAll,
     WordPracticeStage.Complete,
   ],
+  [WordPracticeMode.ShuffleWordsTest]: null,
+  [WordPracticeMode.ReviewWordsTest]: null
 }
 export const WordPracticeStageNameMap: Record<WordPracticeStage, string> = {
   [WordPracticeStage.FollowWriteNewWord]: '跟写新词',
   [WordPracticeStage.IdentifyNewWord]: '自测新词',
   [WordPracticeStage.ListenNewWord]: '听写新词',
   [WordPracticeStage.DictationNewWord]: '默写新词',
-  [WordPracticeStage.FollowWriteReview]: '跟写上次学习',
-  [WordPracticeStage.IdentifyReview]: '自测上次学习',
-  [WordPracticeStage.ListenReview]: '听写上次学习',
-  [WordPracticeStage.DictationReview]: '默写上次学习',
-  [WordPracticeStage.FollowWriteReviewAll]: '跟写之前学习',
-  [WordPracticeStage.IdentifyReviewAll]: '自测之前学习',
-  [WordPracticeStage.ListenReviewAll]: '听写之前学习',
-  [WordPracticeStage.DictationReviewAll]: '默写之前学习',
+  [WordPracticeStage.FollowWriteReview]: '跟写旧词',
+  [WordPracticeStage.IdentifyReview]: '自测旧词',
+  [WordPracticeStage.ListenReview]: '听写旧词',
+  [WordPracticeStage.DictationReview]: '默写旧词',
   [WordPracticeStage.Complete]: '完成学习',
   [WordPracticeStage.Shuffle]: '随机复习',
 }

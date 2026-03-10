@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import BasePage from '@/components/BasePage.vue'
+import BasePage from '~/components/base/BasePage.vue'
 import Collapse from '@/components/base/Collapse.vue'
 import WeChat from '~/components/channel-icons/WeChat.vue'
 import { APP_NAME, GITHUB, Origin } from '@/config/env.ts'
-import ConflictNoticeText from '@/components/ConflictNoticeText.vue'
+import ConflictNoticeText from '~/components/dialog/ConflictNoticeText.vue'
 
 let title = APP_NAME + ' 新概念英语'
 let route = useRoute()

@@ -1,4 +1,5 @@
 import { DictType, PracticeArticleWordType } from '@/types/enum'
+import type { Card, RecordLogItem, ReviewLog } from 'ts-fsrs'
 
 export type Word = {
   id?: string
@@ -95,7 +96,7 @@ export interface Statistics {
   new: number //新学单词数量
   review: number //复习单词数量
   wrong: number //错误数
-  title: string //文章标题
+  title?: string //文章标题
 }
 
 export type DictResource = {
@@ -143,11 +144,16 @@ export interface PracticeData {
   wrongWords: Word[]
   excludeWords: string[]
   isTypingWrongWord: boolean
+  // word -> wrongTimes 用以评级
+  wrongTimesMap: Record<string, number>
+  wrongTimes: number
 }
 
 export interface TaskWords {
   new: Word[]
   review: Word[]
-  write: Word[]
-  shuffle: Word[]
+}
+
+export interface FSRSData {
+  cardMap: Record<string, Card>
 }

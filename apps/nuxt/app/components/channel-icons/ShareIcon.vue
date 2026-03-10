@@ -1,7 +1,7 @@
 <script setup lang="ts">
 
 import { APP_NAME, LIB_JS_URL, Origin } from "@/config/env.ts";
-import BaseIcon from "@/components/BaseIcon.vue";
+import BaseIcon from "~/components/base/BaseIcon.vue";
 
 const Dialog = defineAsyncComponent(() => import('@/components/dialog/Dialog.vue'))
 
@@ -29,7 +29,7 @@ const studyStats = $computed(() => {
   return {
     total: practiceStore.total,
     newWords: practiceStore.newWordNumber,
-    review: practiceStore.reviewWordNumber + practiceStore.writeWordNumber,
+    review: practiceStore.reviewWordNumber,
     wrong: practiceStore.wrong,
     correct: practiceStore.total - practiceStore.wrong,
     time: msToHourMinute(practiceStore.spend),

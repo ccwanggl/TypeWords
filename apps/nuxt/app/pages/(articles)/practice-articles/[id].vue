@@ -2,13 +2,13 @@
 import { addStat, setUserDictProp } from '@/apis'
 import Toast from '@/components/base/toast/Toast.ts'
 import Tooltip from '@/components/base/Tooltip.vue'
-import BaseIcon from '@/components/BaseIcon.vue'
-import ConflictNotice from '@/components/ConflictNotice.vue'
+import BaseIcon from '~/components/base/BaseIcon.vue'
+import ConflictNotice from '~/components/dialog/ConflictNotice.vue'
 import ArticleList from '@/components/list/ArticleList.vue'
 import Panel from '@/components/Panel.vue'
 import PracticeLayout from '@/components/PracticeLayout.vue'
 import SettingDialog from '@/components/setting/SettingDialog.vue'
-import { AppEnv, DICT_LIST, LIB_JS_URL, TourConfig } from '@/config/env.ts'
+import { AppEnv, DICT_LIST } from '@/config/env.ts'
 import { genArticleSectionData, usePlaySentenceAudio } from '@/hooks/article.ts'
 import { useArticleOptions } from '@/hooks/dict.ts'
 import { useDisableEventListener, useOnKeyboardEventListener, useStartKeyboardEventListener } from '@/hooks/event.ts'
@@ -22,8 +22,9 @@ import { useRuntimeStore } from '@/stores/runtime.ts'
 import { useSettingStore } from '@/stores/setting.ts'
 import { getDefaultArticle, getDefaultDict, getDefaultWord } from '@/types/func.ts'
 import type { Article, ArticleItem, ArticleWord, Dict, Statistics, Word } from '@/types/types.ts'
-import { _getDictDataByUrl, _nextTick, cloneDeep, isMobile, loadJsLib, msToMinute, resourceWrap, total } from '@/utils'
-import { getPracticeArticleCache, setPracticeArticleCache } from '@/utils/cache.ts'
+import { _getDictDataByUrl, _nextTick, cloneDeep, msToMinute, resourceWrap, total } from '@/utils'
+import { getPracticeArticleCacheLocal } from '@/utils/cache.ts'
+import { usePracticeArticlePersistence } from '@/composables/usePracticePersistence'
 import { emitter, EventKey, useEvents } from '@/utils/eventBus.ts'
 import { computed, onMounted, onUnmounted, provide, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -34,6 +35,7 @@ const store = useBaseStore()
 const runtimeStore = useRuntimeStore()
 const settingStore = useSettingStore()
 const statStore = usePracticeStore()
+const articlePersistence = usePracticeArticlePersistence()
 const { toggleTheme } = useTheme()
 
 let articleData = $ref({
@@ -87,7 +89,7 @@ function toggleConciseMode() {
 }
 
 function next() {
-  setPracticeArticleCache(null)
+  articlePersistence.clear()
   if (store.sbook.lastLearnIndex >= articleData.list.length - 1) {
     store.sbook.complete = true
     store.sbook.lastLearnIndex = 0
@@ -160,7 +162,6 @@ watch(
   { immediate: true, deep: true }
 )
 
-
 onActivated(() => {
   console.log('onActivated')
 })
@@ -182,17 +183,16 @@ onMounted(() => {
 function unmount() {
   console.log('onUnmounted')
   runtimeStore.disableEventListener = false
-  let cache = getPracticeArticleCache()
+  const cache = getPracticeArticleCacheLocal()
   //如果有缓存，则更新花费的时间；因为用户不输入不会保存数据
   if (cache) {
     cache.statStoreData.spend = statStore.spend
-    setPracticeArticleCache(cache)
+    articlePersistence.save(cache)
   }
   clearInterval(timer)
 }
 
 onUnmounted(unmount)
-
 
 onDeactivated(unmount)
 
@@ -207,11 +207,11 @@ function setArticle(val: Article) {
   allWrongWords = new Set()
   articleData.list[store.sbook.lastLearnIndex] = val
   articleData.article = val
-  let ignoreList = [store.allIgnoreWords, store.knownWords][settingStore.ignoreSimpleWord ? 0 : 1]
+  let ignoreSet = [store.allIgnoreWordsSet, store.knownWordsSet][settingStore.ignoreSimpleWord ? 0 : 1]
   articleData.article.sections.map((v, i) => {
     v.map(w => {
       w.words.map(s => {
-        if (!ignoreList.includes(s.word.toLowerCase()) && s.type === PracticeArticleWordType.Word) {
+        if (!ignoreSet.has(s.word.toLowerCase()) && s.type === PracticeArticleWordType.Word) {
           statStore.total++
         }
       })
@@ -233,7 +233,7 @@ async function complete() {
   clearInterval(timer)
   //延时删除缓存，因为可能还有输入，需要保存
   setTimeout(() => {
-    setPracticeArticleCache(null)
+    articlePersistence.clear()
   }, 1500)
 
   //todo 有空了改成实时保存
@@ -336,7 +336,7 @@ function nextWord(word: ArticleWord) {
 }
 
 async function changeArticle(val: ArticleItem) {
-  setPracticeArticleCache(null)
+  articlePersistence.clear()
   let rIndex = articleData.list.findIndex(v => v.id === val.item.id)
   if (rIndex > -1) {
     store.sbook.lastLearnIndex = rIndex

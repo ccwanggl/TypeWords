@@ -1,7 +1,7 @@
-import { getDefaultBaseState, useBaseStore } from '@/stores/base'
 import type { BaseState } from '@/stores/base'
-import { getDefaultSettingState } from '@/stores/setting'
+import { getDefaultBaseState, useBaseStore } from '@/stores/base'
 import type { SettingState } from '@/stores/setting'
+import { getDefaultSettingState } from '@/stores/setting'
 import type { Dict, DictResource } from '@/types/types'
 import { useRouter } from 'vue-router'
 import { useRuntimeStore } from '@/stores/runtime'
@@ -12,6 +12,7 @@ import Toast from '@/components/base/toast/Toast'
 import { getDefaultDict, getDefaultWord } from '@/types/func'
 import duration from 'dayjs/plugin/duration'
 import { DictType } from '@/types/enum'
+import { Rating } from 'ts-fsrs'
 
 dayjs.extend(duration)
 
@@ -209,7 +210,6 @@ export function _getStudyProgress(index: number, total: number) {
   return Number(((index / total) * 100).toFixed())
 }
 
-//todo 偶尔发现一个报错，这里nextTick一直不执行
 export function _nextTick(cb: () => void, time?: number) {
   if (time) {
     nextTick(() => setTimeout(cb, time))
@@ -512,7 +512,9 @@ export function jump2Feedback() {
 }
 
 export function isIOS() {
-  const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+  //@ts-ignore
+  const userAgent = navigator.userAgent || navigator.vendor || window.opera
   // 判断是否包含 iPhone、iPad 或 iPod
-  return /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
+  //@ts-ignore
+  return /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream
 }

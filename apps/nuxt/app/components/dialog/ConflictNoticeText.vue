@@ -1,14 +1,23 @@
 <script setup lang="ts">
-import { jump2Feedback } from '@/utils'
+import { jump2Feedback } from '~/utils'
 import WeChat from '~/components/channel-icons/WeChat.vue'
+
+withDefaults(
+  defineProps<{
+    type?: 'all' | 'del' | 'keyboard'
+  }>(),
+  {
+    type: 'all',
+  }
+)
 </script>
 
 <template>
   <div class="text">
-    <div class="title">{{ $t('conflict_notice_title') }}</div>
+    <div class="title" v-if="type === 'all'">{{ $t('conflict_notice_title') }}</div>
     <ul>
-      <li>
-        <div class="title">{{ $t('keyboard_no_response') }}</div>
+      <li v-if="type === 'all' || type === 'keyboard'">
+        <div class="title" v-if="type === 'all'">{{ $t('keyboard_no_response') }}</div>
         <div>
           <div class="text">
             {{ $t('check_plugins_installed') }}
@@ -19,7 +28,8 @@ import WeChat from '~/components/channel-icons/WeChat.vue'
           <ul class="m-0">
             <li>{{ $t('try_incognito_mode') }}</li>
             <li>
-              {{ $t('incognito_not_working') }}<span class="color-link mx-1 cp" @click="jump2Feedback">{{ $t('click_here') }}</span
+              {{ $t('incognito_not_working')
+              }}<span class="color-link mx-1 cp" @click="jump2Feedback">{{ $t('click_here') }}</span
               >{{ $t('feedback_or_wechat') }}<WeChat />
             </li>
             <li>{{ $t('incognito_working') }}</li>
@@ -40,8 +50,8 @@ import WeChat from '~/components/channel-icons/WeChat.vue'
           </ul>
         </div>
       </li>
-      <li>
-        <div class="title">{{ $t('delete_key_goes_back') }}</div>
+      <li v-if="type === 'all' || type === 'del'">
+        <div class="title" v-if="type === 'all'">{{ $t('delete_key_goes_back') }}</div>
         <div>{{ $t('browser_360_shortcut') }}</div>
         <div>{{ $t('change_browser_or_shortcut') }}</div>
       </li>

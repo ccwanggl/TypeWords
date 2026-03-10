@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useBaseStore } from '@/stores/base.ts'
 import { useRouter } from 'vue-router'
-import BaseIcon from '@/components/BaseIcon.vue'
+import BaseIcon from '~/components/base/BaseIcon.vue'
 import {
   _getAccomplishDate,
   _getDictDataByUrl,
@@ -12,16 +12,16 @@ import {
   shuffle,
   useNav,
 } from '@/utils'
-import BasePage from '@/components/BasePage.vue'
+import BasePage from '~/components/base/BasePage.vue'
 import type { DictResource } from '@/types/types.ts'
 import { watch } from 'vue'
 import { getCurrentStudyWord } from '@/hooks/dict.ts'
 import { useRuntimeStore } from '@/stores/runtime.ts'
 import Book from '@/components/Book.vue'
-import PopConfirm from '@/components/PopConfirm.vue'
+import PopConfirm from '~/components/base/PopConfirm.vue'
 import Progress from '@/components/base/Progress.vue'
 import Toast from '@/components/base/toast/Toast.ts'
-import BaseButton from '@/components/BaseButton.vue'
+import BaseButton from '~/components/base/BaseButton.vue'
 import { getDefaultDict } from '@/types/func.ts'
 import DeleteIcon from '@/components/icon/DeleteIcon.vue'
 import PracticeSettingDialog from '~/components/word/PracticeSettingDialog.vue'
@@ -32,8 +32,8 @@ import {
   APP_NAME,
   AppEnv,
   DICT_LIST,
-  Host,
   LIB_JS_URL,
+  Old_Host,
   Origin,
   TourConfig,
   WordPracticeModeNameMap,
@@ -44,11 +44,12 @@ import PracticeWordListDialog from '~/components/word/PracticeWordListDialog.vue
 import ShufflePracticeSettingDialog from '~/components/word/ShufflePracticeSettingDialog.vue'
 import { deleteDict } from '@/apis/dict.ts'
 import OptionButton from '@/components/base/OptionButton.vue'
-import { getPracticeWordCache, setPracticeWordCache } from '@/utils/cache.ts'
+import { usePracticeWordPersistence } from '@/composables/usePracticePersistence'
 import { WordPracticeMode } from '@/types/enum.ts'
 
 const store = useBaseStore()
 const settingStore = useSettingStore()
+const wordPersistence = usePracticeWordPersistence()
 const router = useRouter()
 const { nav } = useNav()
 const runtimeStore = useRuntimeStore()
@@ -63,8 +64,6 @@ useHead({
 let currentStudy = $ref({
   new: [],
   review: [],
-  write: [],
-  shuffle: [],
 })
 
 watch(
@@ -115,14 +114,15 @@ async function init() {
       store.word.bookList[store.word.studyIndex] = await _getDictDataByUrl(store.sdict)
     }
   }
+
   if (!currentStudy.new.length && store.sdict.words.length) {
-    let d = getPracticeWordCache()
+    const d = await wordPersistence.load()
     if (d) {
       currentStudy = d.taskWords
       isSaveData = true
-      if(!currentStudy.new.length && !currentStudy.review.length&& !currentStudy.write.length) {
+      if (!currentStudy?.new.length && !currentStudy?.review.length) {
         isSaveData = false
-        setPracticeWordCache(null)
+        wordPersistence.clear()
         init()
       }
     } else {
@@ -134,7 +134,7 @@ async function init() {
 
 function startPractice(practiceMode: WordPracticeMode, resetCache: boolean = false): void {
   if (resetCache) {
-     setPracticeWordCache(null)
+    wordPersistence.clear()
   }
   if (shouldShowDialogPracticeMode.includes(practiceMode)) {
     editingWordPracticeMode = practiceMode
@@ -160,7 +160,7 @@ function startPractice(practiceMode: WordPracticeMode, resetCache: boolean = fal
     })
     //把是否是第一次设置为false
     settingStore.first = false
-    nav(WordPracticeModeUrlMap[practiceMode]  + '/' +  store.sdict.id, {}, { taskWords: currentStudy })
+    nav(WordPracticeModeUrlMap[practiceMode] + '/' + store.sdict.id, {}, { taskWords: currentStudy })
   } else {
     window.umami?.track('no-dict')
     Toast.warning('请先选择一本词典')
@@ -245,25 +245,27 @@ function check(cb: Function) {
 async function savePracticeSetting() {
   Toast.success('修改成功')
   isSaveData = false
-  setPracticeWordCache(null)
+  wordPersistence.clear()
   await store.changeDict(runtimeStore.editDict)
   currentStudy = getCurrentStudyWord()
 }
 
 async function onShufflePracticeSettingOk(total) {
-  window.umami?.track('startShuffleStudyWord', {
+  isSaveData = false
+  wordPersistence.clear()
+  settingStore.wordPracticeMode = editingWordPracticeMode
+
+  window.umami?.track('startStudyWord', {
     name: store.sdict.name,
     index: store.sdict.lastLearnIndex,
     perDayStudyNumber: store.sdict.perDayStudyNumber,
-    total,
     custom: store.sdict.custom,
     complete: store.sdict.complete,
+    wordPracticeMode: settingStore.wordPracticeMode,
   })
-  isSaveData = false
-  setPracticeWordCache(null)
-  settingStore.wordPracticeMode = editingWordPracticeMode
+
   let ignoreList = [store.allIgnoreWords, store.knownWords][settingStore.ignoreSimpleWord ? 0 : 1]
-  currentStudy.shuffle = shuffle(
+  currentStudy.review = shuffle(
     store.sdict.words.slice(0, store.sdict.lastLearnIndex).filter(v => !ignoreList.includes(v.word))
   ).slice(0, total)
   nav(
@@ -282,17 +284,12 @@ async function saveLastPracticeIndex(e) {
   // runtimeStore.editDict.complete = e >= runtimeStore.editDict.length - 1
   showChangeLastPracticeIndexDialog = false
   isSaveData = false
-  setPracticeWordCache(null)
+  wordPersistence.clear()
   await store.changeDict(runtimeStore.editDict)
   currentStudy = getCurrentStudyWord()
 }
 
 const { data: recommendDictList, isFetching } = useFetch(resourceWrap(DICT_LIST.WORD.RECOMMENDED)).json()
-
-let isNewHost = $ref(true)
-onMounted(() => {
-  isNewHost = window.location.host === Host
-})
 
 const systemPracticeText = $computed(() => {
   if (settingStore.wordPracticeMode === WordPracticeMode.Free) {
@@ -303,12 +300,17 @@ const systemPracticeText = $computed(() => {
       : '开始' + WordPracticeModeNameMap[settingStore.wordPracticeMode]
   }
 })
+
+let isOldHost = $ref(false)
+onMounted(() => {
+  isOldHost = window.location.host === Old_Host
+})
 </script>
 
 <template>
   <BasePage>
-    <div class="mb-4" v-if="!isNewHost">
-      新域名已启用，后续请访问
+    <div class="my-30 text-2xl text-red" v-if="isOldHost">
+      已启用新域名
       <a class="mr-4" :href="`${Origin}/words?from_old_site=1`">{{ Origin }}</a
       >当前 2study.top 域名将在不久后停止使用
     </div>
@@ -362,6 +364,10 @@ const systemPracticeText = $computed(() => {
                 </div>
               </BaseButton>
             </PopConfirm>
+
+            <BaseButton v-if="settingStore.enableFSRS" type="info" size="small" @click="router.push('/fsrs')">
+              学习记录
+            </BaseButton>
           </div>
         </template>
 
@@ -385,9 +391,9 @@ const systemPracticeText = $computed(() => {
             <div class="text-xl font-bold">
               {{ isSaveData ? $t('last_task') : $t('today_task') }}
             </div>
-            <span class="color-link cursor-pointer" v-if="store.sdict.id" @click="showPracticeWordListDialog = true"
-              >{{ $t('word_list') }}</span
-            >
+            <span class="color-link cursor-pointer" v-if="store.sdict.id" @click="showPracticeWordListDialog = true">{{
+              $t('word_list')
+            }}</span>
           </div>
           <div class="flex gap-1 items-center" v-if="store.sdict.id">
             {{ $t('daily_goal') }}
@@ -407,15 +413,11 @@ const systemPracticeText = $computed(() => {
         <div class="flex mt-4 justify-between">
           <div class="stat">
             <div class="num">{{ currentStudy.new.length }}</div>
-            <div class="txt">{{ $t('new_words_count') }}</div>
+            <div class="txt">{{ $t('new_words') }}</div>
           </div>
           <div class="stat">
             <div class="num">{{ currentStudy.review.length }}</div>
-            <div class="txt">{{ $t('review_last') }}</div>
-          </div>
-          <div class="stat">
-            <div class="num">{{ currentStudy.write.length }}</div>
-            <div class="txt">{{ $t('review_previous') }}</div>
+            <div class="txt">{{ $t('review') }}</div>
           </div>
         </div>
         <div class="flex items-end mt-4 gap-4 btn-no-margin">
@@ -449,7 +451,7 @@ const systemPracticeText = $computed(() => {
               <BaseButton
                 class="w-full"
                 v-if="settingStore.wordPracticeMode !== WordPracticeMode.Review"
-                :disabled="!currentStudy.review.length && !currentStudy.write.length"
+                :disabled="!currentStudy.review.length"
                 @click="startPractice(WordPracticeMode.Review, true)"
               >
                 {{ $t('review') }}
@@ -476,7 +478,7 @@ const systemPracticeText = $computed(() => {
                 :disabled="store.sdict.lastLearnIndex < 10 && !store.sdict.complete"
                 @click="startPractice(WordPracticeMode.ShuffleWordsTest, true)"
               >
-                {{ $t('random') }}{{ $t('words') }}{{ $t('test') }}
+                {{ $t('random_words_test') }}
               </BaseButton>
 
               <!--              <BaseButton-->
@@ -513,7 +515,9 @@ const systemPracticeText = $computed(() => {
             <div class="flex items-center gap-2">
               <span class="line-height-[2]">
                 {{
-                  settingStore.wordPracticeMode === WordPracticeMode.Free && isSaveData ? $t('continue_free_practice') : $t('free_practice')
+                  settingStore.wordPracticeMode === WordPracticeMode.Free && isSaveData
+                    ? $t('continue_free_practice')
+                    : $t('free_practice')
                 }}
               </span>
               <IconStreamlineColorPenDrawFlat class="text-xl" />
@@ -545,7 +549,9 @@ const systemPracticeText = $computed(() => {
           >
             {{ isManageDict ? $t('cancel') : $t('manage_dict') }}
           </div>
-          <div class="color-link cursor-pointer" @click="nav('/dict', { isAdd: true })">{{ $t('create_personal_dict') }}</div>
+          <div class="color-link cursor-pointer" @click="nav('/dict', { isAdd: true })">
+            {{ $t('create_personal_dict') }}
+          </div>
         </div>
       </div>
       <div class="flex gap-4 flex-wrap mt-4">
@@ -589,12 +595,16 @@ const systemPracticeText = $computed(() => {
 
   <PracticeWordListDialog :data="currentStudy" v-model="showPracticeWordListDialog" />
 
-  <ShufflePracticeSettingDialog v-model="showShufflePracticeSettingDialog" @ok="onShufflePracticeSettingOk" :wordPracticeMode="editingWordPracticeMode" />
+  <ShufflePracticeSettingDialog
+    v-model="showShufflePracticeSettingDialog"
+    @ok="onShufflePracticeSettingOk"
+    :wordPracticeMode="editingWordPracticeMode"
+  />
 </template>
 
 <style scoped lang="scss">
 .stat {
-  @apply w-31% box-border flex flex-col items-center justify-center rounded-xl p-2 bg-[var(--bg-history)];
+  @apply w-49% box-border flex flex-col items-center justify-center rounded-xl p-2 bg-[var(--bg-history)];
   border: 1px solid gainsboro;
 
   .num {

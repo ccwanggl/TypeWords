@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import Toast from '~/components/base/toast/Toast'
-import BaseButton from '~/components/BaseButton.vue'
+import BaseButton from '~/components/base/BaseButton.vue'
 import { useWordOptions } from '~/hooks/dict'
 import { usePlayBeep, usePlayKeyboardAudio, usePlayWordAudio } from '~/hooks/sound'
 import QuestionForm from '~/components/article/QuestionForm.vue'
@@ -18,10 +18,8 @@ import '@imengyu/vue3-context-menu/lib/vue3-context-menu.css'
 import nlp from 'compromise/three'
 import { nanoid } from 'nanoid'
 import { inject, onMounted, onUnmounted, watch } from 'vue'
-import { useI18n } from 'vue-i18n'
-const { t: $t } = useI18n()
 
-import { getPracticeArticleCache, setPracticeArticleCache } from '~/utils/cache'
+import { usePracticeArticlePersistence } from '~/composables/usePracticePersistence'
 import { PracticeArticleWordType, ShortcutKey } from '~/types/enum'
 
 interface IProps {
@@ -90,18 +88,25 @@ const { toggleWordCollect } = useWordOptions()
 const store = useBaseStore()
 const settingStore = useSettingStore()
 const statStore = usePracticeStore()
+const articlePersistence = usePracticeArticlePersistence()
 const isMob = isMobile()
 
-watch([() => sectionIndex, () => sentenceIndex, () => wordIndex, () => stringIndex], ([a, b, c]) => {
-  if (a !== 0 || b !== 0 || c !== 0) {
-    setPracticeArticleCache({
+const save = debounce(
+  () =>
+    articlePersistence.save({
       practiceData: {
         sectionIndex,
         sentenceIndex,
         wordIndex,
       },
       statStoreData: statStore.$state,
-    })
+    }),
+  1500
+)
+
+watch([() => sectionIndex, () => sentenceIndex, () => wordIndex, () => stringIndex], ([a, b, c]) => {
+  if (a !== 0 || b !== 0 || c !== 0) {
+    save()
   }
   checkCursorPosition(a, b, c)
 })
@@ -131,10 +136,10 @@ watch(
   }
 )
 
-function init() {
+async function init() {
   if (!props.article.id) return
   isSpace = isEnd = false
-  let d = getPracticeArticleCache()
+  const d = await articlePersistence.load()
   if (d) {
     sectionIndex = d.practiceData.sectionIndex
     sentenceIndex = d.practiceData.sentenceIndex
@@ -370,7 +375,7 @@ const next = () => {
 }
 
 function onTyping(e: KeyboardEvent) {
-  debugger
+  // debugger
   if (!props.article.sections.length) return
   if (isTyping || isEnd) return
   isTyping = true
@@ -437,7 +442,7 @@ function onTyping(e: KeyboardEvent) {
     e.preventDefault()
   } catch (e) {
     //todo 上报
-    setPracticeArticleCache(null)
+    articlePersistence.clear()
     init()
   } finally {
     isTyping = false
@@ -643,8 +648,10 @@ onUnmounted(() => {
 })
 
 useEvents([
-  [ShortcutKey.KnowWord, onTyping],
-  [ShortcutKey.UnknownWord, onTyping],
+  [ShortcutKey.ChooseA, onTyping],
+  [ShortcutKey.ChooseB, onTyping],
+  [ShortcutKey.ChooseC, onTyping],
+  [ShortcutKey.ChooseD, onTyping],
 ])
 
 defineExpose({
@@ -791,14 +798,18 @@ const currentPractice = inject('currentPractice', [])
 
     <div class="font-family text-base pr-2 mb-50 mt-10" v-if="currentPractice.length && isEnd">
       <div class="text-2xl font-bold">{{ $t('learning_record') }}</div>
-      <div class="mt-1 mb-3">{{ $t('total_learning_time') }}：{{ msToHourMinute(total(currentPractice, 'spend')) }}</div>
+      <div class="mt-1 mb-3">
+        {{ $t('total_learning_time') }}：{{ msToHourMinute(total(currentPractice, 'spend')) }}
+      </div>
       <div
         class="item border border-item border-solid mt-2 p-2 bg-[var(--bg-history)] rounded-md flex justify-between"
         :class="i === currentPractice.length - 1 && 'color-red!'"
         v-for="(item, i) in currentPractice"
       >
         <span :class="i === currentPractice.length - 1 ? 'color-red' : 'color-gray'"
-          >{{ i === currentPractice.length - 1 ? $t('current') : i + 1 }}.&nbsp;&nbsp;{{ _dateFormat(item.startDate) }}</span
+          >{{ i === currentPractice.length - 1 ? $t('current') : i + 1 }}.&nbsp;&nbsp;{{
+            _dateFormat(item.startDate)
+          }}</span
         >
         <span>{{ msToHourMinute(item.spend) }}</span>
       </div>

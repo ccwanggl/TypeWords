@@ -1,7 +1,7 @@
 <script setup lang="ts">
 
-import BaseTable from "~/components/BaseTable.vue";
-import WordItem from "~/components/WordItem.vue";
+import BaseTable from "~/components/base/BaseTable.vue";
+import WordItem from "~/components/word/WordItem.vue";
 import { defineAsyncComponent } from "vue";
 import type { TaskWords } from "~/types/types.ts";
 import Checkbox from "~/components/base/checkbox/Checkbox.vue";
@@ -59,27 +59,6 @@ let showTranslate = $ref(false)
                 :show-translate="showTranslate"
                 :index="item.index"
                 :show-option="false"
-            />
-          </template>
-        </BaseTable>
-      </div>
-      <div class="h-full flex flex-col gap-2" v-if="data.write.length">
-        <div class="flex justify-between items-center">
-          <span class="title">复习之前 {{data.write.length}} 个</span>
-        </div>
-        <BaseTable
-          class="overflow-auto flex-1 w-85"
-          :list='data.write'
-          :loading='false'
-          :show-toolbar="false"
-          :showPagination="false"
-        >
-          <template v-slot="item">
-            <WordItem
-              :item="item.item"
-              :show-translate="showTranslate"
-              :index="item.index"
-              :show-option="false"
             />
           </template>
         </BaseTable>

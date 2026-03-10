@@ -23,6 +23,7 @@ export enum ShortcutKey {
   ToggleCollect = 'ToggleCollect',
   NextChapter = 'NextChapter',
   PreviousChapter = 'PreviousChapter',
+  NextStep = 'NextStep',
   RepeatChapter = 'RepeatChapter',
   DictationChapter = 'DictationChapter',
   PlayWordPronunciation = 'PlayWordPronunciation',
@@ -34,10 +35,11 @@ export enum ShortcutKey {
   RandomWrite = 'RandomWrite',
   KnowWord = 'KnowWord',
   UnknownWord = 'UnknownWord',
+  MasteredWord = 'MasteredWord',
   ChooseA = 'ChooseA',
   ChooseB = 'ChooseB',
   ChooseC = 'ChooseC',
-  ChooseD = 'ChooseD'
+  ChooseD = 'ChooseD',
 }
 
 export enum TranslateEngine {
@@ -101,11 +103,6 @@ export enum WordPracticeStage {
   IdentifyReview = 5,
   ListenReview = 6,
   DictationReview = 7,
-
-  FollowWriteReviewAll = 8,
-  IdentifyReviewAll = 9,
-  ListenReviewAll = 10,
-  DictationReviewAll = 11,
 
   Shuffle = 12,
   Complete = 13,

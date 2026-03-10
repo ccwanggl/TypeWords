@@ -1,12 +1,12 @@
 <script setup lang="tsx">
 import { detail } from '@/apis'
-import BackIcon from '@/components/BackIcon.vue'
-import BaseButton from '@/components/BaseButton.vue'
-import BaseIcon from '@/components/BaseIcon.vue'
-import BasePage from '@/components/BasePage.vue'
-import BaseTable from '@/components/BaseTable.vue'
-import PopConfirm from '@/components/PopConfirm.vue'
-import WordItem from '@/components/WordItem.vue'
+import BackIcon from '~/components/icon/BackIcon.vue'
+import BaseButton from '~/components/base/BaseButton.vue'
+import BaseIcon from '~/components/base/BaseIcon.vue'
+import BasePage from '~/components/base/BasePage.vue'
+import BaseTable from '~/components/base/BaseTable.vue'
+import PopConfirm from '~/components/base/PopConfirm.vue'
+import WordItem from '~/components/word/WordItem.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
 import Textarea from '@/components/base/Textarea.vue'
 import Form from '@/components/base/form/Form.vue'
@@ -279,7 +279,7 @@ async function startPractice(query = {}) {
   if (![WordPracticeMode.Free, WordPracticeMode.System].includes(settingStore.wordPracticeMode)) {
     settingStore.wordPracticeMode = WordPracticeMode.System
   }
-  console.log(1)
+  // console.log(1)
   localStorage.removeItem(PRACTICE_WORD_CACHE.key)
   studyLoading = true
   await base.changeDict(runtimeStore.editDict)
@@ -300,11 +300,7 @@ async function addMyStudyList() {
   if (!runtimeStore.editDict.words.length) {
     return Toast.warning('没有单词可学习！')
   }
-  if (!settingStore.disableShowPracticeSettingDialog) {
-    showPracticeSettingDialog = true
-    return
-  }
-  startPractice()
+  showPracticeSettingDialog = true
 }
 
 async function startTest() {

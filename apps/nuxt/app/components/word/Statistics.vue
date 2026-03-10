@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useBaseStore } from '~/stores/base.ts'
-import BaseButton from '~/components/BaseButton.vue'
+import BaseButton from '~/components/base/BaseButton.vue'
 import type { Statistics, TaskWords } from '~/types/types.ts'
 import { emitter, EventKey, useEvents } from '~/utils/eventBus.ts'
 import { useSettingStore } from '~/stores/setting.ts'
@@ -61,12 +61,12 @@ watch(model, async newVal => {
     dictIsEnd = false
     let data: Statistics = {
       spend: statStore.spend,
-      //修正计时
-      startDate: Date.now() - statStore.spend,
+      //不需要修正计时，startDate+spend!=Date.now()对不止是正常的，因为会暂停
+      startDate: statStore.startDate,
       total: statStore.total,
       wrong: statStore.wrong,
       new: statStore.newWordNumber,
-      review: statStore.reviewWordNumber + statStore.writeWordNumber,
+      review: statStore.reviewWordNumber,
     }
     window.umami?.track('endStudyWord', {
       name: store.sdict.name,
@@ -78,22 +78,7 @@ watch(model, async newVal => {
       str: `name:${store.sdict.name},per:${store.sdict.perDayStudyNumber},spend:${Number(statStore.spend / 1000 / 60).toFixed(1)},index:${store.sdict.lastLearnIndex}`,
     })
 
-    //如果 shuffle 数组不为空，就说明是复习，不用修改 lastLearnIndex
-    if (settingStore.wordPracticeMode !== WordPracticeMode.Shuffle) {
-      store.sdict.lastLearnIndex = store.sdict.lastLearnIndex + statStore.newWordNumber
-      // 检查已忽略的单词数量，是否全部完成
-      let ignoreList = [store.allIgnoreWords, store.knownWords][settingStore.ignoreSimpleWord ? 0 : 1]
-      // 忽略单词数
-      const ignoreCount = ignoreList.filter(word =>
-        store.sdict.words.slice(store.sdict.lastLearnIndex).some(w => w.word.toLowerCase() === word)
-      ).length
-      // 如果lastLearnIndex已经超过可学单词数，则判定完成
-      if (store.sdict.lastLearnIndex + ignoreCount >= store.sdict.length) {
-        dictIsEnd = true
-        store.sdict.complete = true
-        store.sdict.lastLearnIndex = store.sdict.length
-      }
-    }
+    dictIsEnd = store.sdict.complete
 
     if (AppEnv.CAN_REQUEST) {
       let res = await addStat({
@@ -165,8 +150,7 @@ calcWeekList() // 新增：计算本周学习记录
         <div
           class="text-3xl font-bold mb-2 bg-gradient-to-r from-purple-500 to-purple-700 bg-clip-text text-transparent"
         >
-          <template v-if="practiceTaskWords.shuffle.length"> 🎯 {{ $t('review_complete') }} </template>
-          <template v-else> 🎉 {{ $t('daily_task_complete') }} </template>
+          <div>🎉 {{ $t('daily_task_complete') }}</div>
         </div>
         <p class="font-medium text-lg">{{ encouragementText }}</p>
       </div>
@@ -194,7 +178,7 @@ calcWeekList() // 新增：计算本周学习记录
           <IconFluentBook20Regular class="text-purple-500" />
           <div class="text-sm mb-1 font-medium">{{ $t('review') }}</div>
           <div class="text-xl font-bold">
-            {{ statStore.reviewWordNumber + statStore.writeWordNumber }}
+            {{ statStore.reviewWordNumber }}
           </div>
         </div>
       </div>

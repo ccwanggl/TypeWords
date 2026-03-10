@@ -19,12 +19,6 @@ const settingStore = useSettingStore()
       <Switch v-model="settingStore.showNearWord"/>
     </SettingItem>
 
-    <SettingItem :title="$t('disable_practice_setting_dialog')"
-                 :desc="$t('disable_practice_setting_dialog_desc')"
-    >
-      <Switch v-model="settingStore.disableShowPracticeSettingDialog"/>
-    </SettingItem>
-
     <SettingItem :title="$t('clear_input_on_error')"
     >
       <Switch v-model="settingStore.inputWrongClear"/>
