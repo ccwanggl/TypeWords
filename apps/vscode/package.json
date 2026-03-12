@@ -4,9 +4,9 @@
   "description": "TypeWords Vscode Extension",
   "repository":"https://github.com/zyronon/TypeWords",
   "publisher":"TypeWords",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "engines": {
-    "vscode": "^1.105.1"
+    "vscode": "^1.105.0"
   },
   "categories": [
     "Other"
@@ -14,14 +14,10 @@
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
-    "commands": [
-      {
-        "command": "typewords.helloWorld",
-        "title": "Hello World"
-      },
+    "commands": [ 
       {
         "command": "typewords.openChat",
-        "title": "打开单词练习聊天",
+        "title": "打开 TypeWords",
         "icon": "$(comment-discussion)"
       }
     ]
