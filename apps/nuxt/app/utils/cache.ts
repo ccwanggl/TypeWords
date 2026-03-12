@@ -45,7 +45,7 @@ export type PracticeArticleCache = {
   statStoreData: PracticeState
 }
 
-export type LocalCacheResult<T> = { val: T; updated_at?: string }
+export type LocalCacheResult<T> = { val: T; updated_at?: string; version: number }
 
 function getLocal<T>(config: CacheConfig): T | null {
   const result = getLocalWithMeta<T>(config)
@@ -57,25 +57,20 @@ function getLocalWithMeta<T>(config: CacheConfig): LocalCacheResult<T> | null {
   const d = localStorage.getItem(config.key)
   if (!d) return null
   try {
-    const obj = JSON.parse(d)
-    if (obj.version !== config.version) throw new Error('version mismatch')
-    return {
-      val: obj.val as T,
-      updated_at: typeof obj.updated_at === 'string' ? obj.updated_at : undefined,
-    }
+    return JSON.parse(d)
   } catch {
     localStorage.removeItem(config.key)
     return null
   }
 }
 
-function setLocal<T>(config: CacheConfig, val: T | null, updated_at?: string): void {
+function setLocal<T>(config: CacheConfig, val: T | null, updated_at: string): void {
   if (val != null) {
     const payload: { version: number; val: T; updated_at?: string } = {
       version: config.version,
       val,
+      updated_at,
     }
-    if (updated_at) payload.updated_at = updated_at
     localStorage.setItem(config.key, JSON.stringify(payload))
   } else {
     localStorage.removeItem(config.key)

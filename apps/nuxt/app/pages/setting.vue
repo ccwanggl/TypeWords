@@ -2,7 +2,7 @@
 import { defineAsyncComponent, nextTick, ref, watch } from 'vue'
 import { getDefaultSettingState, useSettingStore } from '@/stores/setting'
 import { getShortcutKey, useEventListener } from '@/hooks/event'
-import { checkAndUpgradeSaveDict, checkAndUpgradeSaveSetting, cloneDeep, loadJsLib, shakeCommonDict } from '@/utils'
+import { checkAndUpgradeSaveDict, checkAndUpgradeSaveSetting, cloneDeep, loadJsLib } from '@/utils'
 import BaseButton from '~/components/base/BaseButton.vue'
 import { getDefaultBaseState, useBaseStore } from '@/stores/base'
 import {
@@ -30,15 +30,9 @@ import CommonSetting from '@/components/setting/CommonSetting.vue'
 import FsrsSetting from '@/components/setting/FsrsSetting.vue'
 import ArticleSetting from '@/components/setting/ArticleSetting.vue'
 import WordSetting from '@/components/setting/WordSetting.vue'
-import {
-  PRACTICE_ARTICLE_CACHE,
-  PRACTICE_WORD_CACHE,
-  getPracticeArticleCacheLocal,
-  getPracticeWordCacheLocal,
-  setPracticeArticleCacheLocal,
-  setPracticeWordCacheLocal,
-} from '@/utils/cache'
+import { PRACTICE_ARTICLE_CACHE, PRACTICE_WORD_CACHE } from '@/utils/cache'
 import { usePracticeWordPersistence, usePracticeArticlePersistence } from '@/composables/usePracticePersistence'
+import { useDataSyncPersistence } from '@/composables/useDataSyncPersistence'
 import SettingItem from '~/components/setting/SettingItem.vue'
 import Form, { type FormType } from '~/components/base/form/Form.vue'
 import { Supabase } from '~/utils/supabase.ts'
@@ -58,8 +52,6 @@ type HistoryBackupMeta = HistoryBackupIndexItem & {
   previousHash?: string | null
 }
 
-type SupabaseSyncType = 'dict' | 'setting' | 'practice_word' | 'practice_article'
-
 let route = useRoute()
 let title = APP_NAME + ' 设置'
 useSeoMeta({
@@ -78,6 +70,7 @@ const runtimeStore = useRuntimeStore()
 const store = useBaseStore()
 const wordPersistence = usePracticeWordPersistence()
 const articlePersistence = usePracticeArticlePersistence()
+const dataSyncPersistence = useDataSyncPersistence()
 
 const config = useRuntimeConfig()
 const gitLastCommitHash = ref(config?.public?.latestCommitHash)
@@ -320,15 +313,15 @@ let isNewHost = $ref(false)
 let showTransfer = $ref(false)
 let showBackupGate = $ref(false)
 let showHistoryDialog = $ref(false)
-let pendingNextAction = $ref<'import' | 'supabase_save' | 'restore_history' | ''>('')
+let pendingNextAction = $ref<'import' | 'supabase_save' | 'restore_history' | 'transfer' | ''>('')
 let historyBackups = $ref<HistoryBackupMeta[]>([])
 let restoreTarget = $ref<HistoryBackupMeta | null>(null)
 let restoreLoading = $ref(false)
 let showSbFirstSyncChoiceDialog = $ref(false)
 let sbSyncChoiceLoading = $ref(false)
 
-function openImportGate() {
-  pendingNextAction = 'import'
+function openGate(type) {
+  pendingNextAction = type
   showBackupGate = true
 }
 
@@ -355,16 +348,13 @@ function formatHistoryTime(timestamp: number): string {
 
 function openHistoryRestoreGate(item: HistoryBackupMeta) {
   restoreTarget = item
-  pendingNextAction = 'restore_history'
-  showHistoryDialog = false
-  showBackupGate = true
+  openGate('restore_history')
 }
 
 function openSupabaseSaveGate() {
   sbFormRef?.validate(valid => {
     if (!valid) return
-    pendingNextAction = 'supabase_save'
-    showBackupGate = true
+    openGate('supabase_save')
   })
 }
 
@@ -395,10 +385,18 @@ async function restoreHistoryData() {
     else localStorage.setItem(PRACTICE_WORD_CACHE.key, snapshot.data.practiceWord)
     if (snapshot.data.practiceArticle == null) localStorage.removeItem(PRACTICE_ARTICLE_CACHE.key)
     else localStorage.setItem(PRACTICE_ARTICLE_CACHE.key, snapshot.data.practiceArticle)
+    if (!Supabase.check()) {
+      const forcePushOk = await dataSyncPersistence.forcePushAllLocalToRemote()
+      if (forcePushOk) {
+        Toast.success('历史数据恢复成功，已强制覆盖远程，页面即将刷新')
+      } else {
+        Toast.warning('历史数据已恢复，但远程强制推送未完成，页面即将刷新')
+      }
+    } else {
+      Toast.success('历史数据恢复成功，页面即将刷新')
+    }
     showBackupGate = false
     showHistoryDialog = false
-    pendingNextAction = ''
-    Toast.success('历史数据恢复成功，页面即将刷新')
     setTimeout(() => {
       location.reload()
     }, 1000)
@@ -411,110 +409,17 @@ async function restoreHistoryData() {
 
 let tempSbInstance = null
 
-async function pushLocalDataToSupabase(): Promise<void> {
-  const updated_at = new Date().toISOString()
-  const rows: Array<{ type: SupabaseSyncType; data: unknown; data_version: number; updated_at: string }> = [
-    {
-      type: 'dict',
-      data: shakeCommonDict(store.$state),
-      data_version: SAVE_DICT_KEY.version,
-      updated_at,
-    },
-    {
-      type: 'setting',
-      data: settingStore.$state,
-      data_version: SAVE_SETTING_KEY.version,
-      updated_at,
-    },
-    {
-      type: 'practice_word',
-      data: getPracticeWordCacheLocal(),
-      data_version: PRACTICE_WORD_CACHE.version,
-      updated_at,
-    },
-    {
-      type: 'practice_article',
-      data: getPracticeArticleCacheLocal(),
-      data_version: PRACTICE_ARTICLE_CACHE.version,
-      updated_at,
-    },
-  ]
-  const { error } = await tempSbInstance.from('typewords_data').upsert(rows, { onConflict: 'type' })
-  if (error) throw new Error(error?.message ?? String(error))
-}
-
-async function pullRemoteDataToLocal(): Promise<void> {
-  const { data, error } = await tempSbInstance
-    .from('typewords_data')
-    .select('type, data, updated_at, data_version')
-    .in('type', ['dict', 'setting', 'practice_word', 'practice_article'])
-    .not('data_version', 'is', null)
-  if (error) throw new Error(error?.message ?? String(error))
-  const rows = (data ?? []) as Array<{
-    type: SupabaseSyncType
-    data: unknown
-    updated_at?: string
-    data_version: number
-  }>
-  const map = new Map(rows.map(item => [item.type, item]))
-  const now = new Date().toISOString()
-
-  const dictRow = map.get('dict')
-  if (dictRow && dictRow.data && typeof dictRow.data === 'object') {
-    const dictState = checkAndUpgradeSaveDict({ val: dictRow.data, version: dictRow.data_version })
-    dictState.load = true
-    store.setState(dictState)
-    await set(
-      SAVE_DICT_KEY.key,
-      JSON.stringify({
-        val: dictState,
-        version: SAVE_DICT_KEY.version,
-        updated_at: dictRow.updated_at ?? now,
-      })
-    )
-  }
-
-  const settingRow = map.get('setting')
-  if (settingRow && settingRow.data && typeof settingRow.data === 'object') {
-    const settingState = checkAndUpgradeSaveSetting({ val: settingRow.data, version: settingRow.data_version })
-    settingState.load = true
-    settingStore.setState(settingState)
-    await set(
-      SAVE_SETTING_KEY.key,
-      JSON.stringify({
-        val: settingState,
-        version: SAVE_SETTING_KEY.version,
-        updated_at: settingRow.updated_at ?? now,
-      })
-    )
-  }
-
-  const practiceWordRow = map.get('practice_word')
-  setPracticeWordCacheLocal(
-    practiceWordRow && practiceWordRow.data && typeof practiceWordRow.data === 'object'
-      ? (practiceWordRow.data as any)
-      : null,
-    practiceWordRow?.updated_at ?? now
-  )
-
-  const practiceArticleRow = map.get('practice_article')
-  setPracticeArticleCacheLocal(
-    practiceArticleRow && practiceArticleRow.data && typeof practiceArticleRow.data === 'object'
-      ? (practiceArticleRow.data as any)
-      : null,
-    practiceArticleRow?.updated_at ?? now
-  )
-}
-
 async function onSbFirstSyncChoice(action: 'push_local' | 'pull_remote') {
   if (sbSyncChoiceLoading) return
   sbSyncChoiceLoading = true
   try {
     if (action === 'push_local') {
-      await pushLocalDataToSupabase()
+      const ok = await dataSyncPersistence.forcePushAllLocalToRemote(tempSbInstance)
+      if (!ok) throw new Error('本地推送失败')
       Toast.success('已将本地数据推送到远程')
     } else {
-      await pullRemoteDataToLocal()
+      const ok = await dataSyncPersistence.pullAllRemoteToLocal(tempSbInstance)
+      if (!ok) throw new Error('拉取远程失败')
       Toast.success('已拉取远程数据到本地')
     }
     Supabase.setStatus('success')
@@ -749,7 +654,9 @@ function removeSbConfig() {
 
             <!--            导入数据-->
             <SettingItem title="导出数据">
-              <BaseButton @click="openImportGate" :loading="importLoading">{{ $t('import_data_restore') }}</BaseButton>
+              <BaseButton @click="openGate('import')" :loading="importLoading">{{
+                $t('import_data_restore')
+              }}</BaseButton>
             </SettingItem>
             <div>
               请注意，导入数据将<b class="text-red"> 完全覆盖 </b
@@ -760,7 +667,7 @@ function removeSbConfig() {
             <template v-if="isNewHost">
               <div class="line my-3"></div>
               <SettingItem title="迁移 2study.top 网站数据">
-                <BaseButton @click="showTransfer = true">迁移</BaseButton>
+                <BaseButton @click="openGate('transfer')">迁移</BaseButton>
               </SettingItem>
               <div>
                 请注意，如果本地已有使用记录，请先备份当前数据，迁移数据后将<b class="text-red"> 完全覆盖 </b
@@ -874,6 +781,9 @@ function removeSbConfig() {
       <BaseButton @click="doSaveSbConfig" :disabled="disabled" v-if="pendingNextAction === 'supabase_save'">{{
         runtimeStore.isError ? '重试' : '保存配置'
       }}</BaseButton>
+      <BaseButton @click="showTransfer = true" :disabled="disabled" v-else-if="pendingNextAction === 'transfer'"
+        >迁移</BaseButton
+      >
       <BaseButton
         v-else-if="pendingNextAction === 'restore_history'"
         @click="restoreHistoryData"
