@@ -141,7 +141,7 @@ calcWeekList() // 新增：计算本周学习记录
 </script>
 
 <template>
-  <Dialog :close-on-click-bg="false" :header="false" :keyboard="false" :show-close="false">
+  <Dialog v-model="model" :close-on-click-bg="false" :header="false" :keyboard="false" :show-close="false">
     <div class="p-8 pr-3 bg-[var(--bg-card-primary)] rounded-2xl space-y-4">
       <!-- Header Section -->
       <div class="text-center relative">
