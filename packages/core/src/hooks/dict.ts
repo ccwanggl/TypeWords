@@ -139,8 +139,9 @@ export function getCurrentStudyWord(): TaskWords {
         .filter(([word, card]) => {
           //1、这里的due字段被json序列化之后又恢复是字符串了，所以要用dayjs比较
           //2、要在当前学习这本词典里面
+          //3、不在新词里面
           // console.log(`单词：${word},到期时间：${dayjs(card.due).format('YYYY-MM-DD HH:mm:ss')}`)
-          return dayjs(card.due).valueOf() <= now && wordMap.has(word)
+          return dayjs(card.due).valueOf() <= now && wordMap.has(word) && !data.new.find(v => v.word === word)
         })
         .sort((a, b) => dayjs(a[1].due).valueOf() - dayjs(b[1].due).valueOf())
         .map(([word]) => word)
@@ -159,7 +160,11 @@ export function getCurrentStudyWord(): TaskWords {
         let list = words.slice(0, start).reverse()
         if (complete) list = list.concat(words.slice(end).reverse())
         // 固定填充复习词需要过滤掉有FSRS记录的
-        let set = new Set(Array.from(ignoreSet).concat(Object.keys(store.fsrsData)))
+        let set = new Set(
+          Array.from(ignoreSet)
+            .concat(Object.keys(store.fsrsData))
+            .concat(data.new.map(v => v.word))
+        )
         list = list.filter(item => !set.has(item.word))
         data.review = data.review.concat(list.slice(0, totalNeed - data.review.length))
       }
