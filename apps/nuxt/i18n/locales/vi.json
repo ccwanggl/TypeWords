@@ -522,5 +522,10 @@
 	"fsrs_advanced_enable_fuzz_desc": "通过引入随机,可以避免大量单词需要在同一天复习",
 	"fsrs_advanced_weight": "权重",
 	"fsrs_advanced_request_retention": "希望的最小回忆概率",
-	"fsrs_advanced_maximum_interval": "最大天数限制"
+	"fsrs_advanced_maximum_interval": "最大天数限制",
+	"export_as_xlsx": "导出为xlsx文件",
+	"export_as_json": "导出为json文件",
+	"xlsx_template_download": "xlsx模板下载地址",
+	"import_xlsx": "导入xlsx文件",
+	"import_json": "导入json文件"
 }
