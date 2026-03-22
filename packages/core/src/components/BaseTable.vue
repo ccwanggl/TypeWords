@@ -1,7 +1,7 @@
 <script setup lang="tsx">
 import { nextTick, onMounted, useSlots } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { BaseButton, BaseIcon, BaseInput, Checkbox, Pagination, PopConfirm, MiniDialog } from '@typewords/base'
+import { BaseButton, BaseIcon, BaseInput, Checkbox, Pagination, PopConfirm, MiniDialog, BaseOptionButton } from '@typewords/base'
 import { debounce } from '../utils'
 import Empty from '../components/Empty.vue'
 import DeleteIcon from '../components/icon/DeleteIcon.vue'
@@ -17,7 +17,8 @@ const props = withDefaults(
     showToolbar?: boolean
     showCheckbox?: boolean
     showPagination?: boolean
-    exportLoading?: boolean
+    exportXlsxLoading?: boolean
+    exportJsonLoading?: boolean
     importLoading?: boolean
     request?: Function
     list?: any[]
@@ -27,7 +28,8 @@ const props = withDefaults(
     showCheckbox: false,
     showToolbar: true,
     showPagination: true,
-    exportLoading: false,
+    exportXlsxLoading: false,
+    exportJsonLoading: false,
     importLoading: false,
   }
 )
@@ -40,8 +42,10 @@ const emit = defineEmits<{
       index: number
     },
   ]
-  import: [e: Event]
-  export: []
+  importXlsx: [e: Event]
+  importJson: [e: Event]
+  exportXlsx: []
+  exportJson: []
   del: [ids: number[]]
   sort: [type: Sort, pageNo: number, pageSize: number]
 }>()
@@ -220,13 +224,20 @@ defineRender(() => {
                 <BaseIcon onClick={() => (showCheckbox = !showCheckbox)} title={$t('batch_delete')}>
                   <DeleteIcon />
                 </BaseIcon>
-
                 <BaseIcon onClick={() => (showImportDialog = true)} title={$t('import')}>
                   <IconSystemUiconsImport />
                 </BaseIcon>
-                <BaseIcon onClick={() => emit('export')} title={$t('export')}>
-                  {props.exportLoading ? <IconEosIconsLoading /> : <IconPhExportLight />}
-                </BaseIcon>
+                <BaseOptionButton v-slots={{ 
+                    options: () => 
+                      <div class="flex flex-col gap-2">
+                        <BaseButton class="w-full" onClick={() => emit('exportXlsx')}>{props.exportXlsxLoading ? <IconEosIconsLoading /> : $t('export_as_xlsx')}</BaseButton>
+                        <BaseButton class="w-full" onClick={() => emit('exportJson')}>{props.exportJsonLoading ? <IconEosIconsLoading /> : $t('export_as_json')}</BaseButton>
+                      </div> 
+                  }}>
+                  <BaseIcon>
+                    <IconPhExportLight />
+                  </BaseIcon>
+                </BaseOptionButton>
                 <BaseIcon onClick={() => emit('add')} title={$t('add_word')}>
                   <IconFluentAdd20Regular />
                 </BaseIcon>
@@ -320,24 +331,40 @@ defineRender(() => {
           </div>
           <div>{$t('import_other_hint')}</div>
           <div class="mt-6">
-            {$t('template_download')}：
+            {$t('xlsx_template_download')}：
             <a href={`${ENV.RESOURCE_URL}/libs/单词导入模板.xlsx`}>{$t('word_import_template')}</a>
           </div>
           <div class="mt-4">
             <BaseButton
               onClick={() => {
-                let d: HTMLDivElement = document.querySelector('#upload-trigger')
+                let d: HTMLDivElement = document.querySelector('#upload-xlsx-trigger')
                 d.click()
               }}
               loading={props.importLoading}
             >
-              {$t('import')}
+              {$t('import_xlsx')}
+            </BaseButton>
+            <BaseButton
+              onClick={() => {
+                let d: HTMLDivElement = document.querySelector('#upload-json-trigger')
+                d.click()
+              }}
+              loading={props.importLoading}
+            >
+              {$t('import_json')}
             </BaseButton>
             <input
-              id="upload-trigger"
+              id="upload-xlsx-trigger"
               type="file"
               accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
-              onChange={e => emit('import', e)}
+              onChange={e => emit('importXlsx', e)}
+              class="w-0 h-0 opacity-0"
+            />
+            <input
+              id="upload-json-trigger"
+              type="file"
+              accept=".json"
+              onChange={e => emit('importJson', e)}
               class="w-0 h-0 opacity-0"
             />
           </div>

@@ -27,6 +27,7 @@ import BaseInput from './BaseInput.vue'
 import Pagination from './Pagination.vue'
 import Dialog from './Dialog.vue'
 import MiniDialog from './MiniDialog.vue'
+import BaseOptionButton from './BaseOptionButton.vue'
 
 export {
   MiniDialog,
@@ -56,4 +57,5 @@ export {
   Switch,
   Textarea,
   Tooltip,
+  BaseOptionButton,
 }
