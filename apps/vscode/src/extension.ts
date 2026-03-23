@@ -60,9 +60,9 @@ class ChatPanel {
 
   private async _getHtmlForWebview(webview: vscode.Webview) {
     const cdnUrl = 'https://vs.typewords.cc'
-    const fileUrl = 'https://filestypewords.cc'
+    const fileUrl = 'https://files.typewords.cc'
 
-    let s = await fetch('https://files.typewords.cc/libs/vs.json')
+    let s = await fetch('https://vs.typewords.cc/vs.json')
     let r:any = await s.json()
 
     // 生成 nonce 用于 CSP
@@ -88,8 +88,8 @@ class ChatPanel {
     <title>New Agent</title>
 
 
-  <script type="module" src="${cdnUrl}/assets/${r.js}.js"></script>
-  <link rel="stylesheet" href="${cdnUrl}/assets/${r.css}.css">
+  <script type="module" src="${cdnUrl}/${r.js}.js"></script>
+  <link rel="stylesheet" href="${cdnUrl}/${r.css}.css">
 </head>
 <body>
     <div id="app"></div>

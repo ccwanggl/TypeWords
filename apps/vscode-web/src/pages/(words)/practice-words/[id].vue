@@ -813,7 +813,7 @@ useEvents([
     <template v-slot:practice>
       <div class="mb-20 color-[var(--color-practice-font2)] monaco-workbench text-base">
         <div v-html="prefixTxt"></div>
-        <div class="px-4 mb-3 text-lg">
+        <div class="px-4 mb-3 text-xl">
           <TypeWord
             ref="typingRef"
             :word="word"

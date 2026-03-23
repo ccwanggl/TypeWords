@@ -619,13 +619,13 @@ const isCollect = $computed(() => isWordCollect(props.word))
       >
         <BaseButton
           :keyboard="`${$t('shortcut')}(${settingStore.shortcutKeyMap[ShortcutKey.KnowWord]})`"
-          size="large"
+          size="small"
           @click="know"
           >{{ $t('i_know') }}
         </BaseButton>
         <BaseButton
           :keyboard="`${$t('shortcut')}(${settingStore.shortcutKeyMap[ShortcutKey.UnknownWord]})`"
-          size="large"
+          size="small"
           @click="unknown"
           >{{ $t('i_dont_know') }}
         </BaseButton>
@@ -644,6 +644,7 @@ const isCollect = $computed(() => isWordCollect(props.word))
 
     <div
       class="other anim"
+      v-if="false"
       v-opacity="
         ![WordPracticeType.Listen, WordPracticeType.Dictation, WordPracticeType.Identify].includes(
           settingStore.wordPracticeType
