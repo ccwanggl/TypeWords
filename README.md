@@ -72,7 +72,18 @@ Designed to meet most users' vocabulary learning needs. Community contributions 
 
 #### Note: This project can run standalone with data saved locally. Manual backup is required when switching devices; this does not affect normal usage.
 
-### Option 1: Using Docker
+### Option 1: Running from Source
+
+This project is built with `Nuxt` and requires a Node.js environment.
+
+1. Install NodeJS, refer to the [official documentation](https://nodejs.org/en/download)
+2. The project is large. It's recommended to use `git clone --depth 1 https://github.com/zyronon/TypeWords.git` to clone only the latest commit. GitHub's Download ZIP feature will not work properly.
+3. In the project root directory, open a terminal and run `pnpm install` to download dependencies.
+4. Run `pnpm run dev` to start the project. The default address is [`http://localhost:5567`](http://localhost:5567)
+5. Open [`http://localhost:5567`](http://localhost:5567) in your browser to access the project.
+6. Run `pnpm run generate` to build the project files.
+
+### Option 2: Using Docker
 
 The easiest way to run TypeWords is using Docker:
 
@@ -105,17 +116,6 @@ docker build -t typewords .
 # Run the container
 docker run -d -p 3000:80 --name typewords typewords
 ```
-
-### Option 2: Running from Source
-
-This project is built with `Nuxt` and requires a Node.js environment.
-
-1. Install NodeJS, refer to the [official documentation](https://nodejs.org/en/download)
-2. The project is large. It's recommended to use `git clone --depth 1 https://github.com/zyronon/TypeWords.git` to clone only the latest commit. GitHub's Download ZIP feature will not work properly.
-3. In the project root directory, open a terminal and run `pnpm install` to download dependencies.
-4. Run `pnpm run dev` to start the project. The default address is [`http://localhost:5567`](http://localhost:5567)
-5. Open [`http://localhost:5567`](http://localhost:5567) in your browser to access the project.
-6. Run `pnpm run generate` to build the project files.
 
 ## Features and Suggestions
 

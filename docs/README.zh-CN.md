@@ -87,7 +87,19 @@
 
 #### 注：本项目可单独运行，数据保存在本地，换设备需手动备份数据，不影响正常使用；
 
-### 方式一：使用 Docker
+### 方式一：从源码运行
+
+本项目是基于`Nuxt`开发的，需要 node 环境来运行。
+
+1. 安装 NodeJS，参考[官方文档](https://nodejs.org/en/download)
+2. 项目文件很大，推荐使用 `git clone --depth 1 https://github.com/zyronon/TypeWords.git` 命令只克隆最近一次提交。直接下载
+   Github 提供的 Download ZIP 功能是无法运行的
+3. 在项目根目录下，打开命令行，运行`pnpm install`来下载依赖。
+4. 执行`pnpm run dev`来启动项目，项目默认地址为[`http://localhost:5567`](http://localhost:5567)
+5. 在浏览器中打开[`http://localhost:5567`](http://localhost:5567)  来访问项目。
+6. 执行`pnpm run generate`打包项目文件
+
+### 方式二：使用 Docker
 
 使用 Docker 是最简单的运行方式：
 
@@ -120,18 +132,6 @@ docker build -t typewords .
 # 运行容器
 docker run -d -p 3000:80 --name typewords typewords
 ```
-
-### 方式二：从源码运行
-
-本项目是基于`Nuxt`开发的，需要 node 环境来运行。
-
-1. 安装 NodeJS，参考[官方文档](https://nodejs.org/en/download)
-2. 项目文件很大，推荐使用 `git clone --depth 1 https://github.com/zyronon/TypeWords.git` 命令只克隆最近一次提交。直接下载
-   Github 提供的 Download ZIP 功能是无法运行的
-3. 在项目根目录下，打开命令行，运行`pnpm install`来下载依赖。
-4. 执行`pnpm run dev`来启动项目，项目默认地址为[`http://localhost:5567`](http://localhost:5567)
-5. 在浏览器中打开[`http://localhost:5567`](http://localhost:5567)  来访问项目。
-6. 执行`pnpm run generate`打包项目文件
 
 ## 功能与建议
 

@@ -244,7 +244,11 @@ export function msToMinute(ms) {
 
 //获取完成天数
 export function _getAccomplishDays(total: number, dayNumber: number) {
-  return Math.ceil(total / dayNumber)
+  let r = Math.ceil(total / dayNumber)
+  if (r) {
+    return r === Infinity ? '-' : r
+  }
+  return '-'
 }
 
 //获取完成日期

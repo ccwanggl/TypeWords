@@ -73,13 +73,13 @@ watch(
           <BaseInput class="target-number" v-model="tempLastLearnIndex" />
         </div>
         <span>{{ $t('start_daily') }}</span>
-        <div class="target-number mx-2">
-          {{ tempPerDayStudyNumber }}
+        <div class="w-16">
+          <BaseInput class="target-number" v-model="tempPerDayStudyNumber" />
         </div>
         <span>{{ $t('new_words_count2') }}</span>
         <span>，{{ $t('review') }}</span>
         <div class="target-number mx-2">
-          {{ tempPerDayStudyNumber * tempWordReviewRatio }}
+          {{ (tempPerDayStudyNumber * tempWordReviewRatio) || '-'}}
         </div>
         <span>{{ $t('words') }}</span>
       </div>

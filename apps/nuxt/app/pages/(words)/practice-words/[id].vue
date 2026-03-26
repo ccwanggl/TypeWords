@@ -797,6 +797,13 @@ watch(isIniting, n => {
 })
 
 function onWordMarkPickComplete(result: WordMarkPickResult) {
+  result.know.map(word => {
+    data.ratingMap[word.word.toLowerCase()] = Rating.Good
+    data.excludeWords.push(word.word)
+  })
+  result.mastered.map(word => {
+    data.excludeWords.push(word.word)
+  })
   console.log(result)
   if (result.unknown.length > 0) {
     data.isTypingWrongWord = true
