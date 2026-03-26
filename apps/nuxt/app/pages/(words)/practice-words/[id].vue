@@ -46,6 +46,7 @@ import ConflictNotice2 from '@typewords/core/components/dialog/ConflictNotice2.v
 import { createEmptyCard, Rating } from 'ts-fsrs'
 import { useGetGradeByWrongTimes, useNextCard } from '@typewords/core/hooks/fsrs'
 import WordMarkPickList, { type WordMarkPickResult } from '@typewords/core/components/word/WordMarkPickList.vue'
+import { buildQuestion } from '@typewords/core/utils/word-test.ts'
 
 const { toggleWordCollect, isWordSimple, toggleWordSimple } = useWordOptions()
 const settingStore = useSettingStore()
@@ -84,10 +85,18 @@ function getDefaultPracticeData(origin?: Partial<PracticeData>, val?: Partial<Pr
     ratingMap: {},
     wrongTimes: 0,
     isTypingWrongWord: false,
+    question: null, 
     ...val,
   })
 }
 let data = $ref<PracticeData>(getDefaultPracticeData({}))
+
+watch(
+  () => data.index,
+  (newVal, oldVal) => {
+    data.question = buildQuestion(data.words[data.index], allWords)
+  }
+)
 
 provide('practiceData', data)
 provide('practiceTaskWords', taskWords)
@@ -209,6 +218,8 @@ watchOnce(
   }
 )
 
+let allWords: Word[]
+
 let isIniting = ref(true)
 async function initData(initVal?: TaskWords, init: boolean = false) {
   console.log('initData')
@@ -286,6 +297,17 @@ async function initData(initVal?: TaskWords, init: boolean = false) {
     watchStage(statStore.stage)
     watchPracticeType(settingStore.wordPracticeType)
   }
+
+  // 初始化 Question
+  let dictId: any = route.params.id
+  let d = store.word.bookList.find(v => v.id === dictId)
+  if (!d) d = store.sdict
+  if (!d?.id) return router.push('/words')
+  allWords = shuffle(d.words)
+  if (!data.question) {
+    data.question = buildQuestion(data.words[data.index], allWords)
+  }
+
   clearInterval(timer)
   timer = setInterval(() => {
     if (isFocus) {
@@ -893,6 +915,7 @@ useEvents([
           <TypeWord
             ref="typingRef"
             :word="word"
+            :question="data.question"
             @wrong="onTypeWrong"
             @complete="next"
             @mastered="toggleWordSimpleWrapper"
