@@ -503,7 +503,10 @@ function typo() {
 
 function play() {
   if (settingStore.wordPracticeType === WordPracticeType.Dictation || settingStore.dictation) {
-    typo()
+    if (!showWordResult.value && !right) {
+      //输入完成，或者已显示的情况下，不记入错误
+      typo()
+    }
   }
   volumeIconRef?.play()
 }
