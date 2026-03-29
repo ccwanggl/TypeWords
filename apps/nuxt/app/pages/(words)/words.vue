@@ -421,7 +421,7 @@ onMounted(() => {
 })
 
 watchEffect(() => {
-  window.umami?.track('word-stat', { s: `总学习时长：${totalSpend}, 今日学习时长：${todayTotalSpend},总学习天数：${totalDay}` })
+  window.umami?.track('word-stat', { s: `总时长:${totalSpend},今日时长:${todayTotalSpend},总天数:${totalDay}` })
 })
 
 onUnmounted(() => {
