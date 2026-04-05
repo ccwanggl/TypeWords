@@ -1,6 +1,10 @@
 <script setup lang="ts">
 let logList = [
   {
+    date: '2026/04/05',
+    content: '新增时间暂停功能',
+  },
+  {
     date: '2026/03/29',
     content: '新增统计功能；修复例句无法发音问题；优化学习记录表格；新增快速自测模式',
   },

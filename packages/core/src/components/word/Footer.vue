@@ -2,11 +2,11 @@
 import { usePracticeStore } from '../../stores/practice'
 import { useSettingStore } from '../../stores/setting'
 import type { PracticeData } from '../../types'
-import { BaseIcon, Toast, Tooltip } from '@typewords/base'
+import { ShortcutKey, WordPracticeMode, WordPracticeStage } from '../../types'
+import { BaseIcon, Tooltip } from '@typewords/base'
 import SettingDialog from '../setting/SettingDialog.vue'
 import VolumeSettingMiniDialog from './VolumeSettingMiniDialog.vue'
 import StageProgress from '../StageProgress.vue'
-import { ShortcutKey, WordPracticeMode, WordPracticeStage } from '../../types'
 import { WordPracticeModeNameMap, WordPracticeStageNameMap } from '../../config/env'
 import { useI18n } from 'vue-i18n'
 
@@ -30,10 +30,8 @@ function onTimerRowClick() {
   if (statStore.timerPaused) {
     statStore.resumeTimer()
     bumpPracticeTimerActivity?.()
-    Toast.success('已恢复计时')
   } else {
     statStore.pauseTimerManual()
-    Toast.info('已暂停计时')
   }
 }
 
@@ -195,7 +193,9 @@ const stages = $computed(() => {
 
 <template>
   <div class="footer">
-    <Tooltip :title="settingStore.showToolbar ? $t('collapse') : $t('expand')">
+    <Tooltip
+      :title="`${settingStore.showToolbar ? $t('collapse') : $t('expand')}(${settingStore.shortcutKeyMap[ShortcutKey.ToggleToolbar]})`"
+    >
       <IconFluentChevronLeft20Filled
         @click="settingStore.showToolbar = !settingStore.showToolbar"
         class="arrow"
@@ -224,6 +224,7 @@ const stages = $computed(() => {
                 </template>
                 <template v-else>
                   {{ Math.floor(statStore.spend / 1000 / 60) }}{{ $t('minutes') }}
+                  <!--                  {{statStore.spend /1000}}-->
                 </template>
               </div>
             </Tooltip>

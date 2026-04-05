@@ -1,5 +1,5 @@
 <template>
-  <Transition name="message-fade" appear>
+  <Transition :name="anim ? 'message-fade' : ''" appear>
     <div
       v-if="visible"
       class="message"
@@ -30,7 +30,7 @@ interface Props {
   duration?: number
   showClose?: boolean
   shadow?: boolean
-  confirm?: boolean
+  anim?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -38,7 +38,7 @@ const props = withDefaults(defineProps<Props>(), {
   duration: 3000,
   showClose: false,
   shadow: true,
-  confirm: false,
+  anim: true,
 })
 
 const emit = defineEmits(['close'])
