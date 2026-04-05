@@ -67,7 +67,7 @@ let loading = $ref(false)
 let timer = $ref<any>(-1)
 /** 仅用于 visibilitychange 内 fetch：与 `!document.hidden` 一致 */
 let isFocus = true
-const IDLE_MS = 1 * 60 * 1000
+const IDLE_MS = 3 * 60 * 1000
 let lastKeyActivity = Date.now()
 let taskWords = $ref<TaskWords>({
   new: [],
@@ -192,7 +192,7 @@ const onvisibilitychange = async () => {
       runtimeStore.globalLoading = false
     }
   } else {
-    statStore.pauseTimerAuto('auto_visibility')
+    statStore.pauseTimer('auto_visibility')
   }
 }
 
@@ -335,7 +335,7 @@ async function initData(initVal?: TaskWords, init: boolean = false) {
     statStore.inputWordNumber = 0
     statStore.wrong = 0
     statStore.spend = 0
-    statStore.resetTimerPause()
+    statStore.resumeTimer()
     watchStage(statStore.stage)
     watchPracticeType(settingStore.wordPracticeType)
   }
@@ -356,7 +356,7 @@ async function initData(initVal?: TaskWords, init: boolean = false) {
 
     const now = Date.now()
     if (now - lastKeyActivity >= IDLE_MS) {
-      return statStore.pauseTimerAuto('auto_idle')
+      return statStore.pauseTimer('auto_idle')
     }
     statStore.spend += 1000
   }, 1000)

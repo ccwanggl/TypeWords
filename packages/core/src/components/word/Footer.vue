@@ -31,7 +31,7 @@ function onTimerRowClick() {
     statStore.resumeTimer()
     bumpPracticeTimerActivity?.()
   } else {
-    statStore.pauseTimerManual()
+    statStore.pauseTimer('manual')
   }
 }
 

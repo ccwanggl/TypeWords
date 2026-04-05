@@ -47,23 +47,13 @@ export const usePracticeStore = defineStore('practice', {
     },
   },
   actions: {
-    pauseTimerManual() {
-      if (!this.timerPaused) {
-        this.timerPaused = true
-        this.timerPauseReason = 'manual'
-      }
-    },
-    pauseTimerAuto(reason: 'auto_visibility' | 'auto_idle') {
+    pauseTimer(reason: TimerPauseReason) {
       if (!this.timerPaused) {
         this.timerPaused = true
         this.timerPauseReason = reason
       }
     },
     resumeTimer() {
-      this.timerPaused = false
-      this.timerPauseReason = null
-    },
-    resetTimerPause() {
       this.timerPaused = false
       this.timerPauseReason = null
     },
