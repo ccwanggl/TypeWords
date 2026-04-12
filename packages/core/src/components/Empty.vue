@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { BaseButton } from '@typewords/base'
+import { withAppBaseURL } from '../utils/base-url'
 
 defineProps<{
   text?: string
@@ -9,11 +10,13 @@ defineProps<{
 defineEmits<{
   add: []
 }>()
+
+const emptyImageSrc = withAppBaseURL('/imgs/empty.svg')
 </script>
 
 <template>
   <div class="empty">
-    <NuxtImg src="/imgs/empty.svg" alt="" />
+    <NuxtImg :src="emptyImageSrc" alt="" />
     <span>{{ text ?? $t('empty_placeholder') }}</span>
     <BaseButton v-if="showAdd" @click="$emit('add')">{{ $t('add') }}</BaseButton>
   </div>

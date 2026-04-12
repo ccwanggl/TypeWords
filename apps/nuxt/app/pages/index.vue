@@ -3,6 +3,7 @@ import { APP_NAME, GITHUB } from '@typewords/core/config/env.ts'
 import { BaseIcon } from '@typewords/base'
 import { getSystemTheme, listenToSystemThemeChange, setTheme, swapTheme } from '@typewords/core/hooks/theme.ts'
 import ChannelIcons from '@typewords/core/components/channel-icons/ChannelIcons.vue'
+import { withAppBaseURL } from '@typewords/core/utils/base-url'
 
 definePageMeta({
   layout: 'empty',
@@ -118,13 +119,13 @@ const { locales, setLocale, locale } = useI18n()
             </ul>
           </div>
           <div class="flex-1">
-            <NuxtImg src="/imgs/words.png" class="rounded-xl w-full" />
+            <NuxtImg :src="withAppBaseURL('/imgs/words.png')" class="rounded-xl w-full" />
           </div>
         </div>
 
         <div class="flex gap-14 w-full mt-30">
           <div class="flex-1">
-            <NuxtImg src="/imgs/articles.png" class="rounded-xl w-full" />
+            <NuxtImg :src="withAppBaseURL('/imgs/articles.png')" class="rounded-xl w-full" />
           </div>
           <div>
             <div class="text-4xl font-bold mb-8  text-right">{{ $t('home_article_practice') }}</div>

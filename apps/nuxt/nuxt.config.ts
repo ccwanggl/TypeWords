@@ -14,10 +14,41 @@ try {
   latestCommitHash = 'unknown'
 }
 
+const siteOrigin = (process.env.ORIGIN || 'https://typewords.cc').replace(/\/$/, '')
+
+function normalizeBaseURL(baseURL: string = '/') {
+  if (!baseURL) return '/'
+
+  let normalizedBaseURL = baseURL.trim()
+
+  if (!normalizedBaseURL.startsWith('/')) {
+    normalizedBaseURL = `/${normalizedBaseURL}`
+  }
+  if (!normalizedBaseURL.endsWith('/')) {
+    normalizedBaseURL = `${normalizedBaseURL}/`
+  }
+
+  return normalizedBaseURL.replace(/\/{2,}/g, '/')
+}
+
+function withBaseURL(path: string, baseURL: string) {
+  if (!path.startsWith('/')) return path
+  if (baseURL === '/') return path
+  if (path === '/') return baseURL
+  return `${baseURL.slice(0, -1)}${path}`
+}
+
+function toSiteURL(path: string, baseURL: string) {
+  return new URL(withBaseURL(path, baseURL), siteOrigin).toString()
+}
+
+const appBaseURL = normalizeBaseURL(process.env.NUXT_APP_BASE_URL || '/')
+
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   app: {
+    baseURL: appBaseURL,
     // keepalive: true,
     head: {
       title: 'Type Words 官网 - 词文记 | 单词跟打 · 文章跟打 · 电脑上背单词', // default fallback title
@@ -51,8 +82,8 @@ export default defineNuxtConfig({
             'Type Words 官方网站 - 在线英语练习平台，支持单词、文章跟打练习，提升英语学习效率，电脑上背单词。Practice English, one strike, one step forward',
         },
         { property: 'og:type', content: 'website' },
-        { property: 'og:url', content: 'https://typewords.cc/' },
-        { property: 'og:image', content: 'https://typewords.cc/favicon.ico' },
+        { property: 'og:url', content: toSiteURL('/', appBaseURL) },
+        { property: 'og:image', content: toSiteURL('/favicon.ico', appBaseURL) },
 
         // Twitter Card（用于 Twitter 分享）
         { name: 'twitter:card', content: 'summary_large_image' },
@@ -62,7 +93,7 @@ export default defineNuxtConfig({
           content:
             'Type Words 官方网站 - 在线英语练习平台，支持单词、文章跟打练习，提升英语学习效率，电脑上背单词。Practice English, one strike, one step forward',
         },
-        { name: 'twitter:image', content: 'https://typewords.cc/favicon.ico' },
+        { name: 'twitter:image', content: toSiteURL('/favicon.ico', appBaseURL) },
 
         //设置浏览器地址栏颜色（在 Android Chrome 特别明显
         { name: 'theme-color', content: '#818CF8' },
@@ -77,11 +108,11 @@ export default defineNuxtConfig({
         { name: 'color-scheme', content: 'light dark' },
       ],
       link: [
-        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
-        { rel: 'canonical', href: 'https://typewords.cc/' },
+        { rel: 'icon', type: 'image/x-icon', href: withBaseURL('/favicon.ico', appBaseURL) },
+        { rel: 'canonical', href: toSiteURL('/', appBaseURL) },
         //苹果设备（iOS Safari）在用户添加到主屏时显示的图标
-        { rel: 'apple-touch-icon', sizes: '180x180', href: '/favicon.ico' },
-        { rel: 'manifest', href: '/manifest.json' },
+        { rel: 'apple-touch-icon', sizes: '180x180', href: withBaseURL('/favicon.ico', appBaseURL) },
+        { rel: 'manifest', href: withBaseURL('/manifest.json', appBaseURL) },
       ],
     },
   },
@@ -180,6 +211,9 @@ export default defineNuxtConfig({
     port: 5567,
   },
   nitro: {
+    prerender: {
+      ignore: appBaseURL === '/' ? [] : [withBaseURL('/manifest.json', appBaseURL)],
+    },
     devProxy: {
       '/baidu': {
         target: 'https://api.fanyi.baidu.com/api/trans/vip/translate',

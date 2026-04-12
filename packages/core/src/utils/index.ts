@@ -22,6 +22,7 @@ import { Toast } from '@typewords/base'
 import duration from 'dayjs/plugin/duration'
 import { get } from 'idb-keyval'
 import { saveHashSnapshot } from '../composables/useDataSyncPersistence'
+import { withAppBaseURL } from './base-url'
 
 dayjs.extend(duration)
 
@@ -554,7 +555,7 @@ export function resourceWrap(resource: string, version?: number) {
     }
     return `${resource}_v${version}.json`
   }
-  return resource
+  return withAppBaseURL(resource)
 }
 
 // check if it is a new user
