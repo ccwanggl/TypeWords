@@ -6,7 +6,7 @@
   - 前半：给人读，快速理解“项目有什么功能、在哪、现在什么状态”
   - 后半：给 AI 读，提供稳定锚点（ID、路径、状态、维护规则）
 - 事实来源是当前代码仓库，不包含未实现的想象需求。
-- 最近复查时间：`2026-03-23`
+- 最近复查时间：`2026-04-13`
 
 ---
 
@@ -59,9 +59,10 @@ TypeWords 是一个以“英语打字练习”为核心的多端项目：
 核心能力：
 
 - 词书列表、词典详情、编辑管理
-- 单词练习（多模式、多阶段）
-- 单词测试（选择题流程）
-- FSRS 数据查看
+- 单词练习（系统/自由/复习/随机复习等多模式、多阶段）
+- 单词测试（复习测试、随机测试、选择题流程）
+- FSRS 数据查看与参数驱动评分
+- 练习缓存恢复、计时暂停/恢复、快速自测
 
 主要入口：
 
@@ -113,9 +114,10 @@ TypeWords 是一个以“英语打字练习”为核心的多端项目：
 
 核心能力：
 
-- 通用设置、单词设置、文章设置
+- 通用设置、单词设置、文章设置、快捷键设置
 - FSRS 参数配置
-- 备份、恢复、同步相关入口
+- 数据导出/导入、历史备份恢复、迁移入口
+- Supabase 同步配置与首轮同步方向选择
 
 主要入口：
 
@@ -138,7 +140,7 @@ TypeWords 是一个以“英语打字练习”为核心的多端项目：
 - 本地持久化（IDB + localStorage）
 - 初始化加载（user/base/setting）
 - Supabase 双向同步（dict/setting/practice_word/practice_article）
-- 版本快照守护与备份
+- 版本哈希守护、历史快照备份、可见性触发拉取
 
 现状：
 
@@ -207,6 +209,7 @@ TypeWords 是一个以“英语打字练习”为核心的多端项目：
 2. 进入练习页执行打字练习
 3. 练习过程更新 `practice` 状态与统计
 4. 进度持久化到本地，并在可用时同步到远端
+5. 单词练习支持按可见性与空闲状态自动暂停/恢复计时
 
 关键链路：
 
@@ -215,10 +218,11 @@ TypeWords 是一个以“英语打字练习”为核心的多端项目：
 
 ### 4.2 同步流程
 
-1. `useInit` 启动时初始化 user/base/setting
-2. 调用 `pullRemoteIfNewer` 拉取远端较新数据
-3. base/setting 变化通过订阅触发 `saveLocalAndSync`
-4. 按比较策略决定“本地覆盖远端”或“远端覆盖本地”
+1. `useInit` 启动时先执行 `ensureHashGuardBeforeInit`
+2. 初始化 `user/base/setting`，然后通过 `syncData` 对齐本地与远端
+3. 页面重新可见时再次触发“只拉不推”的同步，避免旧本地覆盖新远端
+4. `store.$subscribe` / `settingStore.$subscribe` 在非全局加载状态下触发保存与同步
+5. Supabase 首次接入时，用户可显式选择“本地推送”或“拉取远端”
 
 关键链路：
 
@@ -372,7 +376,7 @@ TypeWords 是一个以“英语打字练习”为核心的多端项目：
   "docType": "project-feature-map",
   "audience": ["human-maintainer", "ai-agent"],
   "version": "1.0.0",
-  "updatedAt": "2026-03-23",
+  "updatedAt": "2026-04-13",
   "granularity": "route+key-component",
   "sourceOfTruth": "repository",
   "coverage": {
@@ -503,7 +507,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "components/dialog/IeDialog.vue"
   ],
   "baseUi": [
-    "packages/base/src/Dialog.vue",
+    "packages/base/src/dialog/Dialog.vue",
     "packages/base/src/MiniDialog.vue",
     "packages/base/src/BaseButton.vue",
     "packages/base/src/select/Select.vue",
@@ -531,7 +535,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["进入 /words 可见词书与练习入口", "可跳转到词典页或练习页"],
     "status": "implemented",
     "evidence": ["apps/nuxt/app/pages/(words)/words.vue"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "RF-WORDS-002",
@@ -545,7 +549,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["可加载词书列表", "可点击词书进入详情或学习链路"],
     "status": "implemented",
     "evidence": ["apps/nuxt/app/pages/(words)/dict-list.vue"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "RF-WORDS-003",
@@ -559,7 +563,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["词典详情可编辑并保存", "可跳转到练习或测试页"],
     "status": "implemented",
     "evidence": ["apps/nuxt/app/pages/(words)/dict.vue"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "RF-WORDS-004",
@@ -573,7 +577,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["进入后能开始打字练习", "练习进度和统计可更新"],
     "status": "implemented",
     "evidence": ["apps/nuxt/app/pages/(words)/practice-words/[id].vue"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "RF-WORDS-005",
@@ -587,7 +591,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["进入测试页可完成选择题", "错题可进入错词集"],
     "status": "implemented",
     "evidence": ["apps/nuxt/app/pages/(words)/words-test/[id].vue"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "RF-WORDS-006",
@@ -601,7 +605,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["进入 /fsrs 可查看卡片状态列表"],
     "status": "implemented",
     "evidence": ["apps/nuxt/app/pages/fsrs.vue"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "RF-ARTICLES-001",
@@ -615,7 +619,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["进入 /articles 可见书籍与入口", "可跳转到文章练习"],
     "status": "implemented",
     "evidence": ["apps/nuxt/app/pages/(articles)/articles.vue"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "RF-ARTICLES-002",
@@ -629,7 +633,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["书单可加载并可跳到详情页"],
     "status": "implemented",
     "evidence": ["apps/nuxt/app/pages/(articles)/book-list.vue"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "RF-ARTICLES-003",
@@ -643,7 +647,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["可浏览文章列表", "可跳转 practice-articles"],
     "status": "implemented",
     "evidence": ["apps/nuxt/app/pages/(articles)/book/index.vue"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "RF-ARTICLES-004",
@@ -657,7 +661,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["动态路由可正确加载对应书籍数据"],
     "status": "implemented",
     "evidence": ["apps/nuxt/app/pages/(articles)/book/[id].vue"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "RF-ARTICLES-005",
@@ -671,7 +675,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["可选择文章并编辑", "可执行批量导入/导出"],
     "status": "implemented",
     "evidence": ["apps/nuxt/app/pages/(articles)/batch-edit-article.vue"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "RF-ARTICLES-006",
@@ -685,7 +689,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["进入页面后可开始文章练习", "练习进度可记录"],
     "status": "implemented",
     "evidence": ["apps/nuxt/app/pages/(articles)/practice-articles/[id].vue"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "RF-USER-001",
@@ -699,7 +703,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["登录流程可触发 API", "验证码组件可发送校验码"],
     "status": "partial",
     "evidence": ["apps/nuxt/app/pages/(user)/login.vue", "packages/core/src/apis/user.ts"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "RF-USER-002",
@@ -713,7 +717,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["登录后可查看用户信息", "可提交用户资料修改"],
     "status": "partial",
     "evidence": ["apps/nuxt/app/pages/(user)/user.vue"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "RF-VIP-001",
@@ -727,7 +731,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["可拉取权益信息", "可发起订单并查询状态"],
     "status": "partial",
     "evidence": ["apps/nuxt/app/pages/(user)/vip.vue", "packages/core/src/apis/member.ts"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "RF-SETTING-001",
@@ -741,7 +745,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["可切换各设置分区并保存", "可执行同步与备份操作"],
     "status": "implemented",
     "evidence": ["apps/nuxt/app/pages/setting.vue"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "RF-PLATFORM-001",
@@ -755,7 +759,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["首页可展示并可跳转功能入口"],
     "status": "implemented",
     "evidence": ["apps/nuxt/app/pages/index.vue"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "RF-PLATFORM-002",
@@ -769,7 +773,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["可查看帮助条目与展开详情"],
     "status": "implemented",
     "evidence": ["apps/nuxt/app/pages/help.vue"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "RF-PLATFORM-003",
@@ -783,7 +787,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["可展示关于与反馈信息块"],
     "status": "implemented",
     "evidence": ["apps/nuxt/app/pages/feedback.vue"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "RF-PLATFORM-004",
@@ -797,7 +801,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["可按分类查看资源并访问链接"],
     "status": "implemented",
     "evidence": ["apps/nuxt/app/pages/doc.vue"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "RF-PLATFORM-005",
@@ -811,7 +815,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["页面可访问并展示占位内容"],
     "status": "partial",
     "evidence": ["apps/nuxt/app/pages/nce.vue"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "RF-PLATFORM-006",
@@ -825,7 +829,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["调试环境可访问并加载测试数据"],
     "status": "partial",
     "evidence": ["apps/nuxt/app/pages/test.vue"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "RF-PLATFORM-007",
@@ -839,7 +843,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["已注册路由可访问", "未注册路由回退到 /words"],
     "status": "implemented",
     "evidence": ["apps/vscode-web/src/router.ts"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "RF-PLATFORM-008",
@@ -853,7 +857,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["执行命令可打开面板", "Webview 可加载远程资源"],
     "status": "implemented",
     "evidence": ["apps/vscode/src/extension.ts"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "CF-WORDS-001",
@@ -867,7 +871,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["输入后可判定对错并推进流程"],
     "status": "implemented",
     "evidence": ["packages/core/src/components/word/TypeWord.vue"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "CF-WORDS-002",
@@ -881,7 +885,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["结束练习时可记录统计结果"],
     "status": "implemented",
     "evidence": ["packages/core/src/components/word/Statistics.vue"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "CF-WORDS-003",
@@ -890,12 +894,12 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "name": "练习设置对话框",
     "location": "packages/core/src/components/word/PracticeSettingDialog.vue",
     "entry": ["apps/nuxt/app/pages/(words)/words.vue", "apps/nuxt/app/pages/(words)/dict.vue"],
-    "dependencies": ["packages/core/src/stores/setting.ts", "packages/base/src/Dialog.vue"],
+    "dependencies": ["packages/core/src/stores/setting.ts", "packages/base/src/dialog/Dialog.vue"],
     "behavior": "配置练习模式、节奏与相关参数。",
     "acceptance": ["修改参数后可影响练习流程"],
     "status": "implemented",
     "evidence": ["packages/core/src/components/word/PracticeSettingDialog.vue"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "CF-ARTICLES-001",
@@ -909,7 +913,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["可完成文章跟打并记录练习状态"],
     "status": "implemented",
     "evidence": ["packages/core/src/components/article/TypingArticle.vue"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "CF-ARTICLES-002",
@@ -923,7 +927,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["编辑完成后内容可被保存并用于练习"],
     "status": "implemented",
     "evidence": ["packages/core/src/components/article/EditArticle.vue"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "CF-ARTICLES-003",
@@ -937,7 +941,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["可更新书籍信息并刷新列表"],
     "status": "implemented",
     "evidence": ["packages/core/src/components/article/EditBook.vue"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "CF-SETTING-001",
@@ -951,7 +955,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["可切换并保存多种设置项"],
     "status": "implemented",
     "evidence": ["packages/core/src/components/setting/SettingDialog.vue"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "CF-SETTING-002",
@@ -965,7 +969,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["参数修改后可影响卡片评分逻辑"],
     "status": "implemented",
     "evidence": ["packages/core/src/components/setting/FsrsSetting.vue"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "CF-SYNC-001",
@@ -979,7 +983,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["触发时可导出备份并继续后续操作"],
     "status": "implemented",
     "evidence": ["packages/core/src/components/dialog/BackupGateDialog.vue"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "CF-SYNC-002",
@@ -993,7 +997,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["满足条件时可弹出并触发迁移流程"],
     "status": "implemented",
     "evidence": ["packages/core/src/components/dialog/MigrateDialog.vue"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "CF-SYNC-003",
@@ -1011,7 +1015,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
       "packages/core/src/components/dialog/ConflictNotice2.vue",
       "packages/core/src/components/dialog/ConflictNoticeText.vue"
     ],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "CF-PLATFORM-001",
@@ -1025,7 +1029,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["练习页具备一致布局、面板和工具能力"],
     "status": "implemented",
     "evidence": ["packages/core/src/components/PracticeLayout.vue"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "CF-PLATFORM-002",
@@ -1039,7 +1043,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["页面加载后初始化流程执行并可展示异常状态"],
     "status": "implemented",
     "evidence": ["apps/nuxt/app/layouts/default.vue", "packages/core/src/composables/useInit.ts"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "CF-PLATFORM-003",
@@ -1053,7 +1057,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["客户端可注册 SW", "生产环境可注入统计资源"],
     "status": "implemented",
     "evidence": ["apps/nuxt/app/plugins/02.init.client.ts"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "CF-PLATFORM-004",
@@ -1067,7 +1071,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["vscode-web 可运行并渲染核心页面子集"],
     "status": "implemented",
     "evidence": ["apps/vscode-web/src/main.ts"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "CF-SYNC-004",
@@ -1081,7 +1085,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["初始化后 store.load 可用", "配置有效时可进行同步读写"],
     "status": "implemented",
     "evidence": ["packages/core/src/composables/useInit.ts"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "CF-SYNC-005",
@@ -1095,7 +1099,7 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "acceptance": ["可按 type 拉取远端较新数据", "本地更新可持久化并上推远端"],
     "status": "implemented",
     "evidence": ["packages/core/src/composables/useDataSyncPersistence.ts"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   },
   {
     "id": "CF-BASE-001",
@@ -1104,12 +1108,12 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "name": "Base UI 导出集合",
     "location": "packages/base/src/index.ts",
     "entry": ["@typewords/base imports"],
-    "dependencies": ["packages/base/src/Dialog.vue", "packages/base/src/form/Form.vue", "packages/base/src/toast/Toast.ts", "packages/base/src/select/Select.vue"],
+    "dependencies": ["packages/base/src/dialog/Dialog.vue", "packages/base/src/form/Form.vue", "packages/base/src/toast/Toast.ts", "packages/base/src/select/Select.vue"],
     "behavior": "统一提供按钮、弹窗、表单、提示、输入、选择等基础能力。",
     "acceptance": ["core 与 apps 可按统一入口复用基础组件"],
     "status": "implemented",
     "evidence": ["packages/base/src/index.ts"],
-    "lastReviewedAt": "2026-03-23"
+    "lastReviewedAt": "2026-04-13"
   }
 ]
 ```
@@ -1123,8 +1127,9 @@ vscodeExt[VscodeExtension] --> vscodeWeb
     "ensureHashGuardBeforeInit()",
     "userStore.init()",
     "baseStore.init() + settingStore.init()",
-    "pullRemoteIfNewer(['setting','dict'])",
-    "subscribe(base/setting) -> saveLocalAndSync()"
+    "syncData({ dict, setting })",
+    "visibilitychange -> syncData(pushWhenLocalNewer: false)",
+    "subscribe(base/setting) -> saveDictState()/saveLocalAndSync()"
   ],
   "localPersistence": {
     "dict": "idb-keyval(SAVE_DICT_KEY)",
