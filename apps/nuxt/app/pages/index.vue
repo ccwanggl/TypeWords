@@ -3,7 +3,6 @@ import { APP_NAME, GITHUB } from '@typewords/core/config/env.ts'
 import { BaseIcon } from '@typewords/base'
 import { getSystemTheme, listenToSystemThemeChange, setTheme, swapTheme } from '@typewords/core/hooks/theme.ts'
 import ChannelIcons from '@typewords/core/components/channel-icons/ChannelIcons.vue'
-import { withAppBaseURL } from '@typewords/core/utils/base-url'
 import { usePlayBeep, usePlayCorrect, usePlayKeyboardAudio } from '@typewords/core/hooks/sound.ts'
 
 definePageMeta({ layout: 'empty' })
@@ -562,13 +561,13 @@ let mobileMenuOpen = $ref(false)
             <div
               class="rounded-2xl overflow-hidden shadow-[var(--hw-shadow-lg)] border border-[var(--hw-border)] md:order-last order-first"
             >
-              <NuxtImg :src="withAppBaseURL('/imgs/words.png')" class="w-full block" alt="单词练习截图" />
+              <NuxtImg src="/imgs/words.png" class="w-full block" alt="单词练习截图" />
             </div>
           </div>
           <!-- Article practice -->
           <div class="grid grid-cols-1 md:grid-cols-[3fr_2fr] gap-10 md:gap-16 items-center">
             <div class="rounded-2xl overflow-hidden shadow-[var(--hw-shadow-lg)] border border-[var(--hw-border)]">
-              <NuxtImg :src="withAppBaseURL('/imgs/articles.png')" class="w-full block" alt="文章练习截图" />
+              <NuxtImg src="/imgs/articles.png" class="w-full block" alt="文章练习截图" />
             </div>
             <div>
               <div class="section-label mb-4">文章练习</div>

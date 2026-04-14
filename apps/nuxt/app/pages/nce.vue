@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { BasePage } from '@typewords/base'
 import { APP_NAME } from '@typewords/core/config/env.ts'
-import { toSiteURL, withAppBaseURL } from '@typewords/core/utils/base-url'
+import { toSiteURL } from '@typewords/core/utils/base-url'
 
 let title = APP_NAME + ' 新概念英语'
 let route = useRoute()
@@ -21,7 +21,7 @@ useSeoMeta({
   <BasePage>
     <div class="">
       <div class="card-white flex gap-4" v-for="i in 4">
-        <NuxtImg :src="withAppBaseURL('/imgs/covers/nce-1.png')" />
+        <NuxtImg src="/imgs/covers/nce-1.png" />
         <div>
           <div class="title">新概念英语第一册</div>
         </div>
