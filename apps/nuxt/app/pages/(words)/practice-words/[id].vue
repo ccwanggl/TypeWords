@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, provide, watch } from 'vue'
 import Statistics from '@typewords/core/components/word/Statistics.vue'
-import { useEvents, emitter, EventKey } from '@typewords/core/utils/eventBus'
+import { emitter, EventKey, useEvents } from '@typewords/core/utils/eventBus.ts'
 import { useSettingStore } from '@typewords/core/stores/setting.ts'
 import { useRuntimeStore } from '@typewords/core/stores/runtime.ts'
 import type { Dict, PracticeData, TaskWords, Word } from '@typewords/core/types/types.ts'
@@ -16,17 +16,17 @@ import {
   _getDictDataByUrl,
   _nextTick,
   cloneDeep,
+  debounce,
   isMobile,
   loadJsLib,
   resourceWrap,
   shuffle,
   throttle,
-  debounce,
 } from '@typewords/core/utils'
 import { useRoute, useRouter } from 'vue-router'
 import Footer from '@typewords/core/components/word/Footer.vue'
 import Panel from '@typewords/core/components/Panel.vue'
-import { BaseIcon, Tooltip, Toast, ToastComponent } from '@typewords/base'
+import { BaseIcon, Toast, ToastComponent, Tooltip } from '@typewords/base'
 import WordList from '@typewords/core/components/list/WordList.vue'
 import TypeWord from '@typewords/core/components/word/TypeWord.vue'
 import Empty from '@typewords/core/components/Empty.vue'
@@ -40,12 +40,12 @@ import { watchOnce } from '@vueuse/core'
 import { addStat, setUserDictProp } from '@typewords/core/apis'
 import GroupList from '@typewords/core/components/word/GroupList.vue'
 import { getPracticeWordCacheLocal } from '@typewords/core/utils/cache.ts'
-import { useDataSyncPersistence } from '@typewords/core/composables/useDataSyncPersistence'
-import { usePracticeWordPersistence } from '@typewords/core/composables/usePracticePersistence'
+import { useDataSyncPersistence } from '@typewords/core/composables/useDataSyncPersistence.ts'
+import { usePracticeWordPersistence } from '@typewords/core/composables/usePracticePersistence.ts'
 import { ShortcutKey, WordPracticeMode, WordPracticeStage, WordPracticeType } from '@typewords/core/types/enum.ts'
 import ConflictNotice2 from '@typewords/core/components/dialog/ConflictNotice2.vue'
 import { createEmptyCard, Rating } from 'ts-fsrs'
-import { useGetGradeByWrongTimes, useNextCard } from '@typewords/core/hooks/fsrs'
+import { useGetGradeByWrongTimes, useNextCard } from '@typewords/core/hooks/fsrs.ts'
 import WordMarkPickList, { type WordMarkPickResult } from '@typewords/core/components/word/WordMarkPickList.vue'
 import { buildQuestion } from '@typewords/core/utils/word-test.ts'
 
@@ -77,6 +77,8 @@ let taskWords = $ref<TaskWords>({
   review: [],
 })
 
+if (import.meta.client) {
+}
 //watch 实例列表，用于本地代码修改hrm后，导致重复watch
 let watchRefList = []
 
@@ -1040,7 +1042,7 @@ useEvents([
 
             <GroupList
               @click="jumpToGroup"
-              v-if="taskWords.new.length && settingStore.wordPracticeMode !== WordPracticeMode.Shuffle"
+              v-if="taskWords.new.length && settingStore.wordPracticeMode === WordPracticeMode.Free"
             />
             <BaseIcon
               v-if="

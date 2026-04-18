@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, useAttrs, watch, computed } from 'vue'
 import Close from './icon/Close.vue'
-import { useDisableEventListener } from '@typewords/core/hooks/event.ts'
 
 const props = defineProps({
   modelValue: [String, Number],
@@ -36,6 +35,14 @@ const inputValue = ref(props.modelValue)
 let focus = $ref(false)
 let inputEl = $ref<HTMLDivElement>()
 const passwordVisible = ref(false)
+
+//当聚焦时，禁用输入监听
+watch(
+  () => focus,
+  (n: any) => {
+    window.disableEventListener = n
+  }
+)
 
 const inputType = computed(() => {
   if (props.type === 'password') {
@@ -85,9 +92,6 @@ const clearInput = () => {
   inputValue.value = ''
   emit('update:modelValue', '')
 }
-
-//当聚焦时，禁用输入监听
-useDisableEventListener(() => focus)
 
 const vFocus = {
   mounted: (el, bind) => {

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, useSlots, watch } from 'vue'
 import type { VNode } from 'vue'
-import { useWindowClick } from '@typewords/core/hooks/event.ts'
 
 interface Option {
   label: string
@@ -79,7 +78,7 @@ let selectValue = ref(props.modelValue)
 provide('selectValue', selectValue)
 provide('selectHandler', selectOption)
 
-useWindowClick((e: PointerEvent) => {
+function onClick(e: PointerEvent) {
   if (!e) return
   if (
     selectRef.value &&
@@ -90,11 +89,14 @@ useWindowClick((e: PointerEvent) => {
     isOpen.value = false
     emit('toggle', isOpen.value)
   }
-})
+}
 
 watch(
   () => props.modelValue,
   newValue => {
+    if (newValue) window.addEventListener('click', onClick)
+    else window.removeEventListener('click', onClick)
+
     selectValue.value = newValue
     if (slots.default) {
       let slot = slots.default()

@@ -138,7 +138,7 @@ export function useTTsPlayAudio() {
     msg.volume = settingStore.wordSoundVolume / 100
     msg.pitch = 1
     msg.lang = 'en-US'
-    getVoicesAsync().then(voices => {
+    getVoicesAsync().then((voices:any[]) => {
       let voiceList = voices.filter(v => v.lang === 'en-US')
       if (voiceList && voiceList.length) {
         msg.voice = voiceList.find(v => v.name.includes('Emma') || v.name.includes('US')) ?? voiceList[0]

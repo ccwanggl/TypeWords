@@ -43,8 +43,8 @@ export async function getNetworkTranslate(
   if (translateEngine === TranslateEngine.Baidu) {
     translator = new Baidu({
       config: {
-        appid: '20230910001811857',
-        key: 'Xxe_yftQR3K3Ue43NQMC',
+        appid: '',
+        key: '',
       },
     }) as any
   }
