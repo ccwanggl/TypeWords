@@ -2,7 +2,6 @@
 import { onMounted, onUnmounted, watch } from 'vue'
 import Tooltip from '../Tooltip.vue'
 import BaseButton from '../BaseButton.vue'
-import { useEventListener } from '@typewords/core/hooks/event.ts'
 import { useI18n } from 'vue-i18n'
 import { modalStack } from './stack.ts'
 
@@ -120,14 +119,22 @@ onUnmounted(() => {
   }
 })
 
-useEventListener('keyup', async (e: KeyboardEvent) => {
+watch(
+  () => visible,
+  n => {
+    if (n) window.addEventListener('keydown', onKeyDown)
+    else window.removeEventListener('keydown', onKeyDown)
+  }
+)
+
+async function onKeyDown(e: KeyboardEvent) {
   if (e.key === 'Escape' && props.keyboard) {
     let lastItem = modalStack[modalStack.length - 1]
     if (lastItem?.id === id) {
       await cancel()
     }
   }
-})
+}
 
 async function ok() {
   if (props.confirm) {

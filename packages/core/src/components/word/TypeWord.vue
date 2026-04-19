@@ -11,6 +11,7 @@ import { BaseButton, BaseIcon, Toast, ToastComponent, Tooltip, VolumeIcon } from
 import Space from '../article/Space.vue'
 import { useI18n } from 'vue-i18n'
 import { useWordOptions } from '../../hooks/dict.ts'
+import { ref } from 'vue'
 
 const { t: $t } = useI18n()
 
@@ -208,11 +209,13 @@ function unknown(e) {
   onTyping(e)
 }
 
+let selectIndex = $ref(-1)
 let completeSelect = false
 function select(e, index: number) {
   if (completeSelect) return
   if (isWordTest) {
     completeSelect = true
+    selectIndex = index
     if (index == props?.question?.correctIndex) {
       input = props.word.word
       playCorrect()
@@ -358,6 +361,7 @@ async function onTyping(e: KeyboardEvent) {
         ('》' === target[input.length] && e.code === 'Period') ||
         ('《' === target[input.length] && e.code === 'Comma') ||
         ('“' === target[input.length] && e.code === 'Quote') ||
+        ('”' === target[input.length] && e.code === 'Quote') ||
         ('：' === target[input.length] && e.code === 'Semicolon') ||
         ('）' === target[input.length] && e.code === 'Digit0'))
     ) {
@@ -366,11 +370,11 @@ async function onTyping(e: KeyboardEvent) {
     }
     if (
       !e.shiftKey &&
-      (('【' === target[input.length] && e.code === 'BracketLeft') ||
-        ('、' === target[input.length] && e.code === 'Slash') ||
+      (('、' === target[input.length] && e.code === 'Slash') ||
         ('。' === target[input.length] && e.code === 'Period') ||
         ('，' === target[input.length] && e.code === 'Comma') ||
         ('‘' === target[input.length] && e.code === 'Quote') ||
+        ('’' === target[input.length] && e.code === 'Quote') ||
         ('；' === target[input.length] && e.code === 'Semicolon') ||
         ('【' === target[input.length] && e.code === 'BracketLeft') ||
         ('】' === target[input.length] && e.code === 'BracketRight'))
@@ -747,7 +751,19 @@ const isCollect = $computed(() => isWordCollect(props.word))
       </div>
 
       <div v-if="isWordTest && !showWordResult" class="flex gap-8 flex-col mt-16 mb-8 w-full">
-        <div v-for="(value, index) in question?.candidates ?? []" class="flex gap-2 min-h-20">
+        <div
+          v-for="(value, index) in question?.candidates ?? []"
+          class="flex gap-2 min-h-20"
+          :class="{
+            'text-green-600':
+              completeSelect &&
+              index === props?.question?.correctIndex,
+            'text-red-600':
+              completeSelect &&
+              index !== props?.question?.correctIndex &&
+              index === selectIndex,
+          }"
+        >
           <BaseButton
             :keyboard="`${$t('shortcut')}(${settingStore.shortcutKeyMap[[ShortcutKey.ChooseA, ShortcutKey.ChooseB, ShortcutKey.ChooseC, ShortcutKey.ChooseD][index]]})`"
             @click="e => select(e, index)"

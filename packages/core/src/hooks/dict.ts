@@ -9,6 +9,7 @@ import { detail } from '../apis'
 import { useRuntimeStore } from '../stores/runtime.ts'
 import { useRoute, useRouter } from 'vue-router'
 import dayjs from 'dayjs'
+import { computed } from 'vue'
 
 export function useWordOptions() {
   const store = useBaseStore()

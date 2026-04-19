@@ -172,7 +172,7 @@ export interface TaskWords {
 export interface SaveData {
   val: any
   version: number
-  updated_at: string
+  updated_at?: string
 }
 
 export interface Snapshot {

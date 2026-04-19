@@ -1,7 +1,6 @@
 import { onDeactivated, onMounted, onUnmounted, watch } from 'vue'
 import { emitter, EventKey } from '../utils/eventBus'
-import { useRuntimeStore } from '../stores/runtime.ts'
-import { useSettingStore } from '../stores/setting.ts'
+import { useRuntimeStore, useSettingStore } from '../stores'
 import { isMobile } from '../utils'
 
 export function useWindowClick(cb: (e: PointerEvent) => void) {
@@ -261,6 +260,7 @@ export function useStartKeyboardEventListener() {
   useEventListener('keydown', (e: KeyboardEvent) => {
     //解决无法复制、全选的问题
     if ((e.ctrlKey || e.metaKey) && ['KeyC', 'KeyA'].includes(e.code)) return
+    if (window?.disableEventListener) return
     if (!runtimeStore.disableEventListener) {
       // 检查当前单词是否包含空格，如果包含，则空格键应该被视为输入
       if (e.code === 'Space') {
@@ -283,7 +283,7 @@ export function useStartKeyboardEventListener() {
       // console.log('shortcutKey', shortcutKey)
 
       let shortcutEvent = []
-      for (let [k, v] of  Object.entries(settingStore.shortcutKeyMap)){
+      for (let [k, v] of Object.entries(settingStore.shortcutKeyMap)) {
         if (v === shortcutKey) {
           // console.log('快捷键', k)
           //必须是已监听的事件，才拦截并触发

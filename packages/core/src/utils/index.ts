@@ -39,6 +39,7 @@ export function no() {
 //检测多余字段;防止人为删除数据，导致数据不完整报错
 function checkRiskKey(origin: object, target: object) {
   for (const [key, value] of Object.entries(origin)) {
+    // @ts-ignore
     if (target[key] !== undefined) origin[key] = target[key]
   }
   return origin
@@ -192,6 +193,7 @@ export async function checkAndUpgradeSaveSetting(val: any) {
         updateLocalData = true
       }
 
+      // @ts-ignore
       delete state.shortcutKeyMap
       checkRiskKey(defaultState, state)
       ;(defaultState as any).__updateLocalData = updateLocalData
@@ -245,7 +247,7 @@ export function useNav() {
 }
 
 export function _dateFormat(val: any, format: string = 'YYYY/MM/DD HH:mm'): string {
-  if (!val) return
+  if (!val) return ''
   if (String(val).length === 10) {
     val = val * 1000
   }
@@ -263,7 +265,7 @@ export function msToHourMinute(ms: number, en: boolean = false) {
   return `${Math.floor(d.asSeconds())}秒`
 }
 
-export function msToMinute(ms, en: boolean = false) {
+export function msToMinute(ms: number, en: boolean = false) {
   return `${Math.floor(dayjs.duration(ms).asMinutes())}${en ? 'm' : '分钟'}`
 }
 
@@ -280,11 +282,15 @@ export function _getAccomplishDays(total: number, dayNumber: number) {
 export function _getAccomplishDate(total: number, dayNumber: number) {
   if (dayNumber <= 0) return '-'
   let d = _getAccomplishDays(total, dayNumber)
-  return dayjs().add(d, 'day').format('YYYY-MM-DD')
+  if (d == '-') return '-'
+  return dayjs()
+    .add(d as number, 'day')
+    .format('YYYY-MM-DD')
 }
 
 //获取学习进度
-export function _getStudyProgress(index: number, total: number) {
+export function _getStudyProgress(index: number, total: number): number {
+  //@ts-ignore
   return Number(((index / total) * 100).toFixed())
 }
 
@@ -525,6 +531,7 @@ export function splitIntoN(arr: any[], n: number) {
 }
 
 export async function loadJsLib(key: string, url: string) {
+  // @ts-ignore
   if (window[key]) return window[key]
   return new Promise((resolve, reject) => {
     const script = document.createElement('script')
@@ -536,15 +543,18 @@ export async function loadJsLib(key: string, url: string) {
         try {
           // 使用动态 import 加载模块
           const module = await import(url) // 动态导入 .mjs 模块
+          // @ts-ignore
           window[key] = module.default || module // 将模块挂到 window 对象
+          // @ts-ignore
           resolve(window[key])
-        } catch (err) {
+        } catch (err: any) {
           reject(`${key} 加载失败: ${err.message}`)
         }
       }
     } else {
       // 如果是非 .mjs 文件，直接按原方式加载
       script.src = url
+      // @ts-ignore
       script.onload = () => resolve(window[key])
     }
     script.onerror = () => reject(key + ' 加载失败')
@@ -552,7 +562,7 @@ export async function loadJsLib(key: string, url: string) {
   })
 }
 
-export function total(arr, key) {
+export function total(arr: any[], key: string) {
   return arr.reduce((a, b) => {
     a += b[key]
     return a
