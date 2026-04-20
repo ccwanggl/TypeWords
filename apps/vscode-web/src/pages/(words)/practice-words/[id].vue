@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, provide, watch } from 'vue'
 import Statistics from '@typewords/core/components/word/Statistics.vue'
-import { useEvents, emitter, EventKey } from '@typewords/core/utils/eventBus'
+import { emitter, EventKey, useEvents } from '@typewords/core/utils/eventBus.ts'
 import { useSettingStore } from '@typewords/core/stores/setting.ts'
 import { useRuntimeStore } from '@typewords/core/stores/runtime.ts'
 import type { Dict, PracticeData, TaskWords, Word } from '@typewords/core/types/types.ts'
@@ -16,17 +16,17 @@ import {
   _getDictDataByUrl,
   _nextTick,
   cloneDeep,
+  debounce,
   isMobile,
   loadJsLib,
   resourceWrap,
   shuffle,
   throttle,
-  debounce,
 } from '@typewords/core/utils'
 import { useRoute, useRouter } from 'vue-router'
 import Footer from '@typewords/core/components/word/Footer.vue'
 import Panel from '@typewords/core/components/Panel.vue'
-import { BaseIcon, Tooltip, Toast } from '@typewords/base'
+import { BaseIcon, Toast, ToastComponent, Tooltip } from '@typewords/base'
 import WordList from '@typewords/core/components/list/WordList.vue'
 import Empty from '@typewords/core/components/Empty.vue'
 import { useBaseStore } from '@typewords/core/stores/base.ts'
@@ -35,14 +35,18 @@ import { getDefaultDict, getDefaultWord } from '@typewords/core/types/func.ts'
 import ConflictNotice from '@typewords/core/components/dialog/ConflictNotice.vue'
 import { AppEnv, DICT_LIST, LIB_JS_URL, TourConfig, WordPracticeModeStageMap } from '@typewords/core/config/env.ts'
 import { watchOnce } from '@vueuse/core'
-import { setUserDictProp } from '@typewords/core/apis'
+import { addStat, setUserDictProp } from '@typewords/core/apis'
 import GroupList from '@typewords/core/components/word/GroupList.vue'
 import { getPracticeWordCacheLocal } from '@typewords/core/utils/cache.ts'
-import { usePracticeWordPersistence } from '@typewords/core/composables/usePracticePersistence'
+import { useDataSyncPersistence } from '@typewords/core/composables/useDataSyncPersistence.ts'
+import { usePracticeWordPersistence } from '@typewords/core/composables/usePracticePersistence.ts'
 import { ShortcutKey, WordPracticeMode, WordPracticeStage, WordPracticeType } from '@typewords/core/types/enum.ts'
 import ConflictNotice2 from '@typewords/core/components/dialog/ConflictNotice2.vue'
 import { createEmptyCard, Rating } from 'ts-fsrs'
-import { useGetGradeByWrongTimes, useNextCard } from '@typewords/core/hooks/fsrs'
+import { useGetGradeByWrongTimes, useNextCard } from '@typewords/core/hooks/fsrs.ts'
+import WordMarkPickList, { type WordMarkPickResult } from '@typewords/core/components/word/WordMarkPickList.vue'
+import { buildQuestion } from '@typewords/core/utils/word-test.ts'
+import dayjs from 'dayjs'
 
 // -------------
 import prefixTxt from './template-vue-prefix.txt?raw'
@@ -58,6 +62,7 @@ const router = useRouter()
 const route = useRoute()
 const store = useBaseStore()
 const statStore = usePracticeStore()
+const dataSync = useDataSyncPersistence()
 const wordPersistence = usePracticeWordPersistence()
 let { getGradeByWrongTimes } = useGetGradeByWrongTimes()
 let { nextCard } = useNextCard()
@@ -66,13 +71,19 @@ let showConflictNotice = $ref(false)
 let showConflictNotice2 = $ref(false)
 let isComplete = $ref(false)
 let loading = $ref(false)
+let settling = $ref(false)
 let timer = $ref<any>(-1)
+/** 仅用于 visibilitychange 内 fetch：与 `!document.hidden` 一致 */
 let isFocus = true
+const IDLE_MS = 3 * 60 * 1000
+let lastKeyActivity = Date.now()
 let taskWords = $ref<TaskWords>({
   new: [],
   review: [],
 })
 
+if (import.meta.client) {
+}
 //watch 实例列表，用于本地代码修改hrm后，导致重复watch
 let watchRefList = []
 
@@ -87,13 +98,49 @@ function getDefaultPracticeData(origin?: Partial<PracticeData>, val?: Partial<Pr
     ratingMap: {},
     wrongTimes: 0,
     isTypingWrongWord: false,
+    question: null,
     ...val,
   })
 }
 let data = $ref<PracticeData>(getDefaultPracticeData({}))
 
+watch(
+  () => data.words,
+  () => {
+    updateQuestion()
+    handleResumeTimer()
+  }
+)
+watch(
+  () => data.index,
+  () => {
+    updateQuestion()
+    handleResumeTimer()
+  }
+)
+
+function updateQuestion() {
+  if (data.words?.[data.index]) {
+    data.question = buildQuestion(data.words[data.index], allWords)
+  }
+}
+
 provide('practiceData', data)
 provide('practiceTaskWords', taskWords)
+
+function bumpPracticeTimerActivity() {
+  lastKeyActivity = Date.now()
+}
+provide('bumpPracticeTimerActivity', bumpPracticeTimerActivity)
+
+function handleResumeTimer() {
+  if (!isFocus) return
+  if (statStore.timerPaused) {
+    statStore.resumeTimer()
+    Toast.success('已恢复计时')
+  }
+  bumpPracticeTimerActivity()
+}
 
 async function loadDict() {
   // console.log('load好了开始加载')
@@ -134,18 +181,35 @@ watch(
 const onvisibilitychange = async () => {
   isFocus = !document.hidden
   if (isFocus) {
+    bumpPracticeTimerActivity()
+    if (statStore.timerPaused && statStore.timerPauseReason === 'auto_visibility') {
+      //特意延迟提示用户，让用户看到，免得用户焦虑，以为没暂停
+      setTimeout(() => {
+        statStore.resumeTimer()
+        Toast.success('已自动恢复计时')
+      }, 1500)
+    }
     if (runtimeStore.globalLoading) return
     runtimeStore.globalLoading = true
     try {
+      //todo 这里如果另一台机器学完了，这里的d可能为空
       const d = await wordPersistence.fetch()
       if (d) {
         taskWords = Object.assign(taskWords, d.taskWords)
         data = Object.assign(data, d.practiceData)
         statStore.$patch(d.statStoreData)
+        // 恢复缓存后，若计时状态为"未暂停"，需重新开启一个新片段
+        // 因为上次保存到现在有时间间隔，不能续在旧片段上
+        if (!statStore.timerPaused) {
+          const now = Date.now()
+          statStore.segments.push([now, now])
+        }
       }
     } finally {
       runtimeStore.globalLoading = false
     }
+  } else {
+    statStore.pauseTimer('auto_visibility')
   }
 }
 
@@ -212,9 +276,10 @@ watchOnce(
   }
 )
 
+let allWords: Word[]
+
 let isIniting = ref(true)
 async function initData(initVal?: TaskWords, init: boolean = false) {
-  console.log('initData')
   isIniting.value = true
   //只有初始化时，才读取缓存（本地 + 可选 Supabase）
   if (init) {
@@ -230,11 +295,19 @@ async function initData(initVal?: TaskWords, init: boolean = false) {
       initData(d.taskWords)
       return
     }
+    console.log('initData')
     taskWords = Object.assign(taskWords, d.taskWords)
     //这里直接赋值的话，provide后的inject获取不到最新值
     data = getDefaultPracticeData(data, d.practiceData)
     statStore.$patch(d.statStoreData)
+    // 恢复缓存后，若计时状态为"未暂停"，需重新开启一个新片段
+    // 因为上次保存到现在有时间间隔，不能续在旧片段上
+    if (!statStore.timerPaused) {
+      const now = Date.now()
+      statStore.segments.push([now, now])
+    }
   } else {
+    console.log('initData')
     // taskWords = initVal
     //不能直接赋值，会导致 inject 的数据为默认值
     taskWords = Object.assign(taskWords, initVal)
@@ -286,16 +359,34 @@ async function initData(initVal?: TaskWords, init: boolean = false) {
     statStore.inputWordNumber = 0
     statStore.wrong = 0
     statStore.spend = 0
+    statStore.segments = []
+    statStore.resumeTimer() // 同时 push 第一条片段 [now, now]
     watchStage(statStore.stage)
     watchPracticeType(settingStore.wordPracticeType)
   }
+
+  // 初始化 Question
+  let dictId: any = route.params.id
+  let d = store.word.bookList.find(v => v.id === dictId)
+  if (!d) d = store.sdict
+  if (!d?.id) return router.push('/words')
+  allWords = shuffle(d.words)
+  updateQuestion()
+
   clearInterval(timer)
+  bumpPracticeTimerActivity()
   timer = setInterval(() => {
-    if (isFocus) {
-      statStore.spend += 1000
+    if (!isFocus) return
+    if (statStore.timerPaused) return
+
+    const now = Date.now()
+    if (now - lastKeyActivity >= IDLE_MS) {
+      return statStore.pauseTimer('auto_idle')
     }
+    statStore.spend += 1000
   }, 1000)
   isIniting.value = false
+  settling = isComplete = false
 }
 
 const word = $computed<Word>(() => {
@@ -393,9 +484,14 @@ function nextStage(originList: Word[], log: string = '', toast: boolean = false)
   }
 }
 
-function complete() {
+async function complete() {
   if (!isComplete) {
+    let start = Date.now()
     console.log('全完学完了')
+    isComplete = true
+    settling = true
+    runtimeStore.globalLoading = true
+    clearInterval(timer)
 
     //如果 shuffle 数组不为空，就说明是复习，不用修改 lastLearnIndex
     if (settingStore.wordPracticeMode !== WordPracticeMode.Shuffle) {
@@ -413,29 +509,120 @@ function complete() {
       }
     }
 
-    //用异步，不然会很卡，因为要设置很多卡片
-    setTimeout(() => {
-      for (const [word, wrongTimes] of Object.entries(data.wrongTimesMap)) {
-        let rating = data.ratingMap[word]
-        if (rating !== undefined) {
-          setWordCard(rating, word)
-        } else {
-          // 则根据错误次数生成评级
-          setWordCard(getGradeByWrongTimes(wrongTimes), word, wrongTimes)
-        }
-      }
-    })
+    // 结算前先将最后一条片段的 end 定格为当前时刻（segments 已是最新，无需临时快照）
+    if (!statStore.timerPaused && statStore.segments.length > 0) {
+      statStore.segments[statStore.segments.length - 1][1] = Date.now()
+    }
 
-    clearInterval(timer)
-    setTimeout(() => wordPersistence.clear(), 300)
-    isComplete = true
+    // 按自然日对 segments 分组，每天生成一条 Statistics 记录
+    // dayKey -> { firstStart, totalSpend, daySegments }
+    type DayGroup = { firstStart: number; totalSpend: number; daySegments: [number, number][] }
+    const dayMap = new Map<string, DayGroup>()
+
+    if (statStore.segments.length > 0) {
+      for (const [segStart, segEnd] of statStore.segments) {
+        const dayKey = dayjs(segStart).format('YYYY-MM-DD')
+        if (!dayMap.has(dayKey)) {
+          dayMap.set(dayKey, { firstStart: segStart, totalSpend: 0, daySegments: [] })
+        }
+        const group = dayMap.get(dayKey)!
+        group.totalSpend += segEnd - segStart
+        group.daySegments.push([segStart, segEnd])
+      }
+    }
+
+    const dayKeys = [...dayMap.keys()]
+    if (dayKeys.length <= 1) {
+      // 单天或无 segments 兜底：行为与原有逻辑完全一致
+      const statistics = {
+        spend: statStore.spend,
+        startDate: statStore.startDate,
+        total: statStore.total,
+        wrong: statStore.wrong,
+        new: statStore.newWordNumber,
+        review: statStore.reviewWordNumber,
+        segments: dayKeys.length === 1 ? dayMap.get(dayKeys[0])!.daySegments : undefined,
+        sessionRole: 'single' as const,
+      }
+      store.sdict.statistics.push(statistics)
+    } else {
+      // 跨天练习：按天拆分，每天一条记录，total/new/review/wrong 共享（因为无法拆分到各天）
+      const baseInfo = {
+        total: statStore.total,
+        wrong: statStore.wrong,
+        new: statStore.newWordNumber,
+        review: statStore.reviewWordNumber,
+      }
+      dayKeys.forEach((dayKey, idx) => {
+        const group = dayMap.get(dayKey)!
+        const sessionRole = idx === 0 ? 'start' : idx === dayKeys.length - 1 ? 'end' : 'middle'
+        store.sdict.statistics.push({
+          ...baseInfo,
+          spend: group.totalSpend,
+          startDate: group.firstStart,
+          segments: group.daySegments,
+          sessionRole: sessionRole as 'start' | 'middle' | 'end',
+        })
+      })
+    }
+
+    for (const [word, wrongTimes] of Object.entries(data.wrongTimesMap)) {
+      let rating = data.ratingMap[word]
+      if (rating !== undefined) {
+        setWordCard(rating, word)
+      } else {
+        // 则根据错误次数生成评级
+        setWordCard(getGradeByWrongTimes(wrongTimes), word, wrongTimes)
+      }
+    }
+
+    if (AppEnv.CAN_REQUEST) {
+      let res = await addStat({
+        ...data,
+        type: 'word',
+        perDayStudyNumber: store.sdict.perDayStudyNumber,
+        lastLearnIndex: store.sdict.lastLearnIndex,
+        complete: store.sdict.complete,
+      })
+      if (!res.success) {
+        Toast.error(res.msg)
+      }
+    }
+
+    await dataSync.saveDictState(store.$state, { pullWhenRemoteNewer: false })
+    await wordPersistence.clear()
+
+    let trackData = {
+      funSpend: Date.now() - start,
+      name: store.sdict.name,
+      spend: Number(statStore.spend / 1000 / 60).toFixed(1),
+      index: store.sdict.lastLearnIndex,
+      per: store.sdict.perDayStudyNumber,
+      custom: store.sdict.custom,
+      complete: store.sdict.complete,
+      str: '',
+    }
+    trackData.str = `name:${trackData.name},per:${trackData.per},spend:${trackData.spend},index:${trackData.index},funSpend:${trackData.funSpend}`
+    window.umami?.track('endStudyWord', trackData)
+    settling = false
+    runtimeStore.globalLoading = false
   }
 }
 
 function next(isTyping: boolean = true, ignoreLoop = false) {
   let temp = word.word.toLowerCase()
+  let preTimes = data.wrongTimesMap[temp] ?? 0
 
-  data.wrongTimesMap[temp] = (data.wrongTimesMap[temp] ?? 0) + data.wrongTimes
+  // 优化：为了加快流程，将一次拼写成功的单词移出错词列表，后续不再安排重复练习
+  // 如果在拼写阶段，一次拼写成功，并且之前有错误记录的。将单词从错词列表里面移除
+  if (settingStore.wordPracticeType === WordPracticeType.Spell && data.wrongTimes === 0 && preTimes) {
+    let rIndex = data.wrongWords.findIndex(v => v.word.toLowerCase() === temp)
+    if (rIndex >= 0) {
+      data.wrongWords.splice(rIndex, 1)
+    }
+  }
+
+  data.wrongTimesMap[temp] = preTimes + data.wrongTimes
   data.wrongTimes = 0
 
   // debugger
@@ -580,6 +767,10 @@ function onTypeWrong() {
   if (!data.wrongWords.find((v: Word) => v.word.toLowerCase() === temp)) {
     data.wrongWords.push(word)
   }
+  let rIndex = data.excludeWords.findIndex(v => v === word.word)
+  if (rIndex > -1) {
+    data.excludeWords.splice(rIndex, 1)
+  }
   savePracticeData('wrong')
 }
 
@@ -612,6 +803,10 @@ async function savePracticeDataIns(where?) {
   // console.log('savePracticeData', where)
   if (runtimeStore.globalLoading) return
   runtimeStore.globalLoading = true
+  // 若计时未暂停，将最后一条片段的 end 更新为当前时刻，确保保存内容最新
+  if (!statStore.timerPaused && statStore.segments.length > 0) {
+    statStore.segments[statStore.segments.length - 1][1] = Date.now()
+  }
   await wordPersistence.save({
     taskWords,
     practiceData: data,
@@ -708,7 +903,6 @@ async function continueStudy() {
       0,
       runtimeStore.routeData.total ?? temp.review.length
     )
-    if (isComplete) isComplete = false
   } else {
     //这里判断是否显示结算弹框，如果显示了结算弹框的话，就不用加进度了
     if (!isComplete) {
@@ -723,7 +917,6 @@ async function continueStudy() {
       }
     } else {
       console.log('学完了，正常下一组')
-      isComplete = false
     }
 
     temp = getCurrentStudyWord()
@@ -785,13 +978,42 @@ watch(isIniting, n => {
   }
 })
 
+function onWordMarkPickComplete(result: WordMarkPickResult) {
+  result.know.map(word => {
+    data.ratingMap[word.word.toLowerCase()] = Rating.Good
+    data.excludeWords.push(word.word)
+  })
+  result.mastered.map(word => {
+    data.excludeWords.push(word.word)
+  })
+  console.log(result)
+  if (result.unknown.length > 0) {
+    data.isTypingWrongWord = true
+    settingStore.wordPracticeType = WordPracticeType.FollowWrite
+    console.log('当前学完了，但还有错词')
+    data.words = shuffle(cloneDeep(result.unknown))
+    data.index = 0
+    data.wrongWords = []
+
+    data.allWrongWords = data.allWrongWords.concat(result.unknown.map(v => v.word.toLowerCase()))
+    result.unknown.forEach(v => {
+      data.wrongTimesMap[v.word.toLowerCase()] = 1
+    })
+  } else {
+    data.words = []
+    next(false)
+  }
+}
+
 useEvents([
+  [EventKey.onTyping, handleResumeTimer],
   [EventKey.repeatStudy, repeat],
   [EventKey.continueStudy, continueStudy],
   //当默写时，执行 show 会标记为错误，并更新卡片
   [ShortcutKey.ShowWord, throttle(show, 300)],
   [ShortcutKey.Previous, prev],
-  [ShortcutKey.Next, throttle(skip, 300)],
+  [ShortcutKey.Next, throttle(() => next(false), 300)],
+  [ShortcutKey.Ignore, throttle(skip, 300)],
   [ShortcutKey.ToggleCollect, collect],
   [ShortcutKey.ToggleSimple, toggleWordSimpleWrapper],
   [ShortcutKey.PlayWordPronunciation, play],
@@ -803,7 +1025,7 @@ useEvents([
   [ShortcutKey.ToggleDictation, () => (settingStore.dictation = !settingStore.dictation)],
   [ShortcutKey.ToggleTheme, toggleTheme],
   [ShortcutKey.ToggleConciseMode, toggleConciseMode],
-  [ShortcutKey.ToggleToolbar,  () => (settingStore.showToolbar = !settingStore.showToolbar)],
+  [ShortcutKey.ToggleToolbar, () => (settingStore.showToolbar = !settingStore.showToolbar)],
   [ShortcutKey.TogglePanel, () => (settingStore.showPanel = !settingStore.showPanel)],
   [ShortcutKey.RandomWrite, randomWrite],
 ])
@@ -815,9 +1037,23 @@ useEvents([
       <div class="mb-20 color-[var(--color-practice-font2)] monaco-workbench text-base">
         <div v-html="prefixTxt"></div>
         <div class="px-4 mb-3 text-xl">
+          <div class="fixed z-99999 center mt-3" v-if="statStore.timerPaused">
+            <ToastComponent
+              :duration="0"
+              :anim="statStore.timerPauseReason !== 'auto_visibility'"
+              :shadow="false"
+              :showClose="true"
+              :message="
+                statStore.timerPauseReason === 'auto_idle' ? '已连续 3 分钟无键盘操作，计时已暂停' : '计时已暂停'
+              "
+              @close="statStore.resumeTimer"
+            />
+          </div>
+
           <TypeWord
             ref="typingRef"
             :word="word"
+            :question="data.question"
             @wrong="onTypeWrong"
             @complete="next"
             @mastered="toggleWordSimpleWrapper"
@@ -837,7 +1073,7 @@ useEvents([
 
             <GroupList
               @click="jumpToGroup"
-              v-if="taskWords.new.length && settingStore.wordPracticeMode !== WordPracticeMode.Shuffle"
+              v-if="taskWords.new.length && settingStore.wordPracticeMode === WordPracticeMode.Free"
             />
             <BaseIcon
               v-if="
@@ -873,51 +1109,7 @@ useEvents([
       </Panel>
     </template>
     <template v-slot:footer>
-      <div class="footer-container p-4">
-        <div
-          class="flex justify-between p-1 items-center border-item-solid border-green-700/20 rounded-t-xl mx-2 text-gray-600 text-sm"
-        >
-          <div>
-            <IconFluentChevronLeft20Filled class="transform-rotate-180 font-size-2.5 mr-2" />
-            <span>4 File</span>
-          </div>
-          <div class="gap-4 flex items-center">
-            <span>Undo</span>
-            <span>Keep</span>
-            <span class="bg-[#434c5e] color-white rounded-md px-2 py-0.5">Review</span>
-          </div>
-        </div>
-        <div class="border-item-solid rounded-lg p-2 items-center bg-[var(--bg-bottom)]">
-          <textarea
-            type="text"
-            placeholder="Plan @ for contexts, / for commands"
-            class="w-full resize-none outline-none bg-transparent border-none h-5 font-family font-bold placeholder-gray-600"
-          ></textarea>
-          <div class="flex justify-between mt-2">
-            <div class="flex gap-space color-gray-500">
-              <div class="flex items-center gap-1 rounded-full bg-[var(--bg-bottom2)] px-2">
-                <IconPhInfinityLight class="font-size-4" />
-                <span class="text-sm color-gray-400">Agent</span>
-                <IconFluentChevronLeft20Filled class="-transform-rotate-90 font-size-2.5" />
-              </div>
-              <div class="flex items-center gap-1">
-                <span class="text-sm color-gray-400">Auto</span>
-                <IconFluentChevronLeft20Filled class="-transform-rotate-90 font-size-2.5" />
-              </div>
-            </div>
-            <div class="flex items-center gap-3 color-gray-600">
-              <div class="relative scale-80 flex items-center">
-                <IconMdiLightCircle class="scale-130 color-gray-700/40" />
-                <IconAntDesignLoadingOutlined class="absolute left-0 top-0 color-gray-500" />
-              </div>
-              <IconFluentGlobe20Regular />
-              <IconF7Photo />
-              <IconFamiconsMicCircleSharp class="text-2xl" />
-            </div>
-          </div>
-        </div>
-      </div>
-      <Footer @skipStep="skipStep" v-if="settingStore.showToolbar" />
+      <Footer @skipStep="skipStep" />
     </template>
   </PracticeLayout>
   <Statistics v-model="isComplete" />

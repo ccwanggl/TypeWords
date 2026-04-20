@@ -30,6 +30,7 @@ import Calendar from './Calendar.vue'
 export * from './select'
 export * from './icon'
 export * from './dialog'
+export * from './types.ts'
 
 export {
   Calendar,

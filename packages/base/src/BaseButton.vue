@@ -1,14 +1,6 @@
 <script setup lang="ts">
 import Tooltip from './Tooltip.vue'
-
-export type ButtonProps = {
-  keyboard?: string
-  active?: boolean
-  disabled?: boolean
-  loading?: boolean
-  size?: 'small' | 'normal' | 'large'
-  type?: 'primary' | 'info' | 'orange'
-}
+import { ButtonProps } from './types.ts'
 
 withDefaults(defineProps<ButtonProps>(), {
   type: 'primary',

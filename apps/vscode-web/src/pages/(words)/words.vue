@@ -1,24 +1,26 @@
 <script setup lang="ts">
 import { useBaseStore } from '@typewords/core/stores/base.ts'
 import { useRouter } from 'vue-router'
-import { BaseButton, BaseIcon, OptionButton, PopConfirm, Progress, Toast } from '@typewords/base'
+import { BaseButton, BaseIcon, Calendar, OptionButton, PopConfirm, Progress, Toast } from '@typewords/base'
 import {
   _getAccomplishDate,
   _getDictDataByUrl,
   _nextTick,
   isMobile,
   loadJsLib,
+  msToHourMinute,
   resourceWrap,
   shuffle,
+  total,
   useNav,
 } from '@typewords/core/utils'
-import type { DictResource } from '@typewords/core/types/types.ts'
+import type { DictResource, Statistics } from '@typewords/core/types/types.ts'
 import { watch } from 'vue'
 import { getCurrentStudyWord } from '@typewords/core/hooks/dict.ts'
 import { useRuntimeStore } from '@typewords/core/stores/runtime.ts'
 import Book from '@typewords/core/components/Book.vue'
 import { getDefaultDict } from '@typewords/core/types/func.ts'
-import {DeleteIcon} from '@typewords/base'
+import { DeleteIcon } from '@typewords/base'
 import PracticeSettingDialog from '@typewords/core/components/word/PracticeSettingDialog.vue'
 import ChangeLastPracticeIndexDialog from '@typewords/core/components/word/ChangeLastPracticeIndexDialog.vue'
 import { useSettingStore } from '@typewords/core/stores/setting.ts'
@@ -42,6 +44,7 @@ import { usePracticeWordPersistence } from '@typewords/core/composables/usePract
 import { WordPracticeMode } from '@typewords/core/types/enum.ts'
 import type { PracticeWordCache } from '@typewords/core/utils/cache.ts'
 import BasePage from '@/z-polyfill/BasePage.vue'
+import dayjs from 'dayjs'
 
 const store = useBaseStore()
 const settingStore = useSettingStore()
@@ -202,6 +205,131 @@ let showShufflePracticeSettingDialog = $ref(false)
 let showChangeLastPracticeIndexDialog = $ref(false)
 let showPracticeWordListDialog = $ref(false)
 
+type StudyDayRow = Statistics & { dictName: string }
+
+let showStudyDayDialog = $ref(false)
+let selectedStudyDateKey = $ref('')
+let studyDayRecords = $ref<StudyDayRow[]>([])
+
+const allWordStatistics = $computed(() => store.word.bookList.flatMap(book => book.statistics ?? []))
+
+const cacheSpendMs = $computed(() => practiceData.statStoreData?.spend ?? 0)
+
+const todayDateKey = $computed(() => dayjs().format('YYYY-MM-DD'))
+
+/**
+ * 缓存记录中每一天对应的学习毫秒数 Map<'YYYY-MM-DD', spendMs>
+ * 有 segments 时按片段精确分组，否则退回到 startDate + spend 整体归一天
+ */
+const cacheDaySpendMap = $computed((): Map<string, number> => {
+  const st = practiceData.statStoreData
+  const map = new Map<string, number>()
+  if (!st?.spend) return map
+  if (Array.isArray(st.segments) && st.segments.length > 0) {
+    for (const [segStart, segEnd] of st.segments) {
+      const key = dayjs(segStart).format('YYYY-MM-DD')
+      map.set(key, (map.get(key) ?? 0) + (segEnd - segStart))
+    }
+  } else {
+    // 老数据 / 无 segments：全部归到 startDate 那天
+    map.set(dayjs(st.startDate).format('YYYY-MM-DD'), st.spend)
+  }
+  console.log('map', map, practiceData.statStoreData)
+  return map
+})
+
+const todayCacheMs = $computed(() => cacheDaySpendMap.get(todayDateKey) ?? 0)
+
+const calendarHighlightDates = $computed(() => {
+  const set = new Set<string>()
+  for (const s of allWordStatistics) {
+    set.add(dayjs(s.startDate).format('YYYY-MM-DD'))
+  }
+  // 把缓存记录中所有出现过的天都高亮（支持跨天）
+  for (const key of cacheDaySpendMap.keys()) {
+    set.add(key)
+  }
+  return [...set]
+})
+
+/** 已落库统计总毫秒（全 bookList） */
+const persistedTotalMs = $computed(() => total(allWordStatistics, 'spend'))
+
+const totalSpend = $computed(() => {
+  const sum = persistedTotalMs + cacheSpendMs
+  if (!sum) return 0
+  return msToHourMinute(sum)
+})
+
+const todayTotalSpend = $computed(() => {
+  const todayPersistedMs = total(
+    allWordStatistics.filter(v => dayjs(v.startDate).isSame(dayjs(), 'day')),
+    'spend'
+  )
+  const sum = todayPersistedMs + todayCacheMs
+  if (!sum) return 0
+  return msToHourMinute(sum)
+})
+
+const totalDay = $computed(() => {
+  const set = new Set(allWordStatistics.map(v => dayjs(v.startDate).format('YYYY-MM-DD')))
+  // 把缓存记录中所有出现过的天都计入（支持跨天）
+  for (const key of cacheDaySpendMap.keys()) {
+    set.add(key)
+  }
+  return set.size
+})
+
+const studyDayDialogTitle = $computed(() =>
+  selectedStudyDateKey ? `${dayjs(selectedStudyDateKey).format('YYYY年M月D日')} 学习记录` : ''
+)
+
+function isStudyDayKeyToday(dateKey: string) {
+  return dateKey === dayjs().format('YYYY-MM-DD')
+}
+
+function onSelectCalendarDate(dateKey: string) {
+  selectedStudyDateKey = dateKey
+  const rows: StudyDayRow[] = []
+  for (const book of store.word.bookList) {
+    for (const stat of book.statistics ?? []) {
+      if (dayjs(stat.startDate).format('YYYY-MM-DD') === dateKey) {
+        rows.push({ ...stat, dictName: book.name })
+      }
+    }
+  }
+  const st = practiceData.statStoreData
+  // 缓存记录跨天时，只要该天在 cacheDaySpendMap 中有记录就展示
+  if (st?.spend && cacheDaySpendMap.has(dateKey)) {
+    const daySpend = cacheDaySpendMap.get(dateKey)!
+    const cacheKeys = [...cacheDaySpendMap.keys()]
+    const keyIdx = cacheKeys.indexOf(dateKey)
+    const isMultiDay = cacheKeys.length > 1
+    // 推算该天在整次练习中的角色（练习未结束，最后一天标为"学习中"而非"学习结束"）
+    let sessionRole: StudyDayRow['sessionRole']
+    if (!isMultiDay) {
+      sessionRole = 'single'
+    } else if (keyIdx === 0) {
+      sessionRole = 'start'
+    } else if (keyIdx === cacheKeys.length - 1) {
+      sessionRole = 'middle' // 最后一天仍在进行中，用 middle 表示
+    } else {
+      sessionRole = 'middle'
+    }
+    rows.push({
+      ...st,
+      spend: daySpend,
+      new: st.newWordNumber,
+      review: st.reviewWordNumber,
+      dictName: store.sdict.name,
+      sessionRole,
+    })
+  }
+  if (!rows.length) return Toast.info('无学习记录')
+  studyDayRecords = rows
+  showStudyDayDialog = true
+}
+
 async function goDictDetail(val: DictResource) {
   if (!val.id) return nav('dict-list')
   runtimeStore.editDict = getDefaultDict(val)
@@ -325,6 +453,10 @@ onMounted(() => {
   isOldHost = window.location.host === Old_Host
 })
 
+watchEffect(() => {
+  window.umami?.track('word-stat', { s: `总时长:${totalSpend},今日时长:${todayTotalSpend},总天数:${totalDay}` })
+})
+
 onUnmounted(() => {
   document.removeEventListener('visibilitychange', onvisibilitychange)
 })
@@ -339,7 +471,7 @@ onUnmounted(() => {
     </div>
 
     <div class="card flex flex-col md:flex-row gap-4">
-      <div class="flex-1 w-full flex flex-col justify-between">
+      <div class="flex-1 flex flex-col justify-between">
         <div class="flex gap-3">
           <div class="p-1 center rounded-full bg-white">
             <IconFluentBookNumber20Filled class="text-xl color-link" />
@@ -388,9 +520,7 @@ onUnmounted(() => {
               </BaseButton>
             </PopConfirm>
 
-            <BaseButton type="info" size="small" @click="router.push('/fsrs')">
-              学习记录
-            </BaseButton>
+            <BaseButton type="info" size="small" @click="router.push('/fsrs')"> 学习记录 </BaseButton>
           </div>
         </template>
 
@@ -404,8 +534,7 @@ onUnmounted(() => {
           </BaseButton>
         </div>
       </div>
-
-      <div class="flex-1 w-full mt-4 md:mt-0" :class="!store.sdict.id && 'opacity-30 cursor-not-allowed'">
+      <div class="flex-1 mt-4 md:mt-0" :class="!store.sdict.id && 'opacity-30 cursor-not-allowed'">
         <div class="flex justify-between">
           <div class="flex items-center gap-2">
             <div class="p-2 center rounded-full bg-white">
@@ -550,6 +679,34 @@ onUnmounted(() => {
       </div>
     </div>
 
+    <div class="card flex flex-col md:flex-row gap-4 p-4 md:p-6">
+      <div class="flex-1 flex flex-col gap-3 min-w-0">
+        <div class="title">统计</div>
+        <div class="flex gap-3 items-center w-full">
+          <div class="stat2">
+            <div class="num">{{ todayTotalSpend }}</div>
+            <div class="txt">{{ $t('today_study_time') }}</div>
+          </div>
+          <div class="stat2">
+            <div class="num">{{ totalDay }}</div>
+            <div class="txt">{{ $t('total_study_days') }}</div>
+          </div>
+          <div class="stat2">
+            <div class="num">{{ totalSpend }}</div>
+            <div class="txt">{{ $t('total_study_time') }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="shrink-0 flex items-center">
+        <Calendar
+          :highlighted-dates="calendarHighlightDates"
+          @select-date="onSelectCalendarDate"
+          :weekHeaderTitle="$t('this_week_record')"
+        >
+        </Calendar>
+      </div>
+    </div>
+
     <div class="card flex flex-col">
       <div class="flex justify-between">
         <div class="title">{{ $t('my_dictionaries') }}</div>
@@ -636,6 +793,15 @@ onUnmounted(() => {
 
   .txt {
     @apply color-gray-500;
+  }
+}
+
+.stat2 {
+  @extend .stat;
+  @apply py-4 flex-1;
+  width: unset;
+  .num {
+    @apply text-2xl break-keep;
   }
 }
 </style>

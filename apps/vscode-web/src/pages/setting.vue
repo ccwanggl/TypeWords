@@ -37,10 +37,11 @@ import { useDataSyncPersistence } from '@typewords/core/composables/useDataSyncP
 import SettingItem from '@typewords/core/components/setting/SettingItem.vue'
 import { Supabase } from '@typewords/core/utils/supabase.ts'
 import BackupGateDialog from '@typewords/core/components/dialog/BackupGateDialog.vue'
-import { createClient } from '@supabase/supabase-js'
-import { useRoute } from 'vue-router'
 import type { BackupData, Snapshot } from '@typewords/core'
 import BasePage from '@/z-polyfill/BasePage.vue'
+
+import { createClient } from '@supabase/supabase-js'
+import { useRoute } from 'vue-router'
 
 const Dialog = defineAsyncComponent(() => import('@typewords/base/Dialog'))
 
@@ -160,6 +161,7 @@ function getShortcutKeyName(key: string): string {
     EditArticle: '编辑文章',
     Next: '下一个',
     Previous: '上一个',
+    Ignore: '跳过单词',
     ToggleSimple: '切换已掌握状态',
     ToggleCollect: '切换收藏状态',
     NextChapter: '下一组',
@@ -172,11 +174,12 @@ function getShortcutKeyName(key: string): string {
     ToggleDictation: '切换默写模式',
     ToggleTheme: '切换主题',
     ToggleConciseMode: '切换底部工具栏和右侧列表',
+    ToggleToolbar: '切换底部工具栏',
     TogglePanel: '切换右侧列表',
     RandomWrite: '随机默写',
     KnowWord: '认识单词',
     UnknownWord: '不认识单词',
-    MasteredWord: '非常熟悉单词',
+    MasteredWord: '已掌握单词',
     ChooseA: '选A',
     ChooseB: '选B',
     ChooseC: '选C',
@@ -391,7 +394,6 @@ async function onSbFirstSyncChoice(action: 'push_local' | 'pull_remote') {
   if (sbSyncChoiceLoading) return
   sbSyncChoiceLoading = true
   try {
-    debugger
     if (action === 'push_local') {
       let localData = await getExportedData()
       const ok = await dataSyncPersistence.forcePushLocalDataToRemote(localData.val, tempSbInstance)
@@ -542,6 +544,7 @@ function removeSbConfig() {
     }
   })
 }
+
 </script>
 
 <template>
@@ -631,7 +634,7 @@ function removeSbConfig() {
             <div class="line my-3"></div>
 
             <!--            导入数据-->
-            <SettingItem title="导出数据">
+            <SettingItem title="导入数据">
               <BaseButton @click="openGate('import')" :loading="importLoading">{{
                 $t('import_data_restore')
               }}</BaseButton>
@@ -661,7 +664,9 @@ function removeSbConfig() {
             <!--          Supabase 设置  -->
             <SettingItem title="Supabase 配置" desc="网站不会上传您的 url 和 key，只保存在浏览器本地(Local storage)">
               <div v-if="sbStatus.status !== 'idle'" class="mt-2 text-sm">
-                <span v-if="sbStatus.status === 'success'">同步状态：成功</span>
+                <span v-if="sbStatus.status === 'success'" class="text-green"
+                  >状态：同步正常运行中，数据已同步到云端</span
+                >
                 <span v-else-if="sbStatus.status === 'error'" class="text-red">
                   同步状态：失败{{ sbStatus.statusMessage ? `（${sbStatus.statusMessage}）` : '' }}
                 </span>
@@ -774,6 +779,7 @@ function removeSbConfig() {
       >
         恢复此历史数据
       </BaseButton>
+
       <UploadButton
         @change="importData"
         :disabled="disabled"
@@ -790,7 +796,7 @@ function removeSbConfig() {
     <div class="p-4 w-120 max-h-100 overflow-auto">
       <div v-if="!historyBackups.length" class="color-gray">暂无历史数据</div>
       <div v-else class="flex flex-col gap-3">
-        <div>这里是每次 {{ APP_NAME }} 更新后自动保存的用户数据，如果您的数据被损坏，您可在此尝试恢复</div>
+        <div>这里是每次 {{ APP_NAME }} 更新后/报错后自动保存的用户数据，如果您的数据被损坏，您可在此尝试恢复</div>
         <div v-for="item in historyBackups" :key="item.key" class="border rounded-md flex justify-between">
           <div>
             <div class="">版本号：{{ item.hash }}</div>
@@ -818,6 +824,7 @@ function removeSbConfig() {
 
   <MigrateDialog v-model="showTransfer" @ok="transferOk" />
 </template>
+
 <style scoped lang="scss">
 .col-line {
   border-right: 2px solid var(--color-line);
