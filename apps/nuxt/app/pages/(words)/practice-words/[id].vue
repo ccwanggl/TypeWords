@@ -272,7 +272,7 @@ watchOnce(
   }
 )
 
-let allWords: Word[]
+let allWords: Word[] = []
 
 let isIniting = ref(true)
 async function initData(initVal?: TaskWords, init: boolean = false) {
@@ -1107,7 +1107,7 @@ useEvents([
 
             <GroupList
               @click="jumpToGroup"
-              v-if="taskWords.new.length && settingStore.wordPracticeMode === WordPracticeMode.Free"
+              v-if="taskWords.new.length && settingStore.wordPracticeMode !== WordPracticeMode.Shuffle"
             />
             <BaseIcon
               v-if="

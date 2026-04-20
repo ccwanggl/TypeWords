@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ButtonProps } from './BaseButton.vue'
+import type { ButtonProps } from './types.ts'
 import BaseButton from './BaseButton.vue'
 import { computed, useAttrs } from 'vue'
 

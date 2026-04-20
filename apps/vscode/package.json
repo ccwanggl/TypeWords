@@ -4,9 +4,9 @@
   "description": "TypeWords Vscode Extension",
   "repository":"https://github.com/zyronon/TypeWords",
   "publisher":"TypeWords",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "engines": {
-    "vscode": "^1.105.0"
+    "vscode": "^1.101.0"
   },
   "icon": "logo.png",
   "categories": [
@@ -32,7 +32,7 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.105.0",
+    "@types/vscode": "^1.101.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
     "typescript-eslint": "^8.52.0",
