@@ -47,12 +47,12 @@ export const RESOURCE_PATH = ENV.API + 'static'
 
 export const DICT_LIST = {
   WORD: {
-    ALL: `/list/word.json`,
-    RECOMMENDED: `/list/recommend_word.json`,
+    ALL: ENV.RESOURCE_URL + `/list/word.json`,
+    RECOMMENDED: ENV.RESOURCE_URL + `/list/recommend_word.json`,
   },
   ARTICLE: {
-    ALL: `/list/article.json`,
-    RECOMMENDED: `/list/recommend_article.json`,
+    ALL: ENV.RESOURCE_URL + `/list/article.json`,
+    RECOMMENDED: ENV.RESOURCE_URL + `/list/recommend_article.json`,
   },
 }
 
