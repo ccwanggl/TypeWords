@@ -900,7 +900,7 @@ const isCollect = $computed(() => isWordCollect(props.word))
         class="anim"
         v-opacity="(settingStore.translate && !settingStore.dictation) || showFullWord || showWordResult"
       >
-        <template v-if="word?.etymology?.length">
+        <template v-if="word?.etymology?.length && false">
           <div class="line-white my-3"></div>
           <div class="flex">
             <div class="label">{{ $t('etymology') }}</div>
