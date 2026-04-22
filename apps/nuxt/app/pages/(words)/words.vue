@@ -50,7 +50,8 @@ import { myDictList } from '@typewords/core/apis'
 import PracticeWordListDialog from '@typewords/core/components/word/PracticeWordListDialog.vue'
 import ShufflePracticeSettingDialog from '@typewords/core/components/word/ShufflePracticeSettingDialog.vue'
 import { deleteDict } from '@typewords/core/apis/dict.ts'
-import { usePracticeWordPersistence } from '@typewords/core/composables/usePracticePersistence'
+import { flushStatToStore, usePracticeWordPersistence } from '@typewords/core/composables/usePracticePersistence'
+import { useDataSyncPersistence } from '@typewords/core/composables/useDataSyncPersistence'
 import { WordPracticeMode } from '@typewords/core/types/enum.ts'
 import type { PracticeWordCache } from '@typewords/core/utils/cache.ts'
 import dayjs from 'dayjs'
@@ -58,6 +59,7 @@ import dayjs from 'dayjs'
 const store = useBaseStore()
 const settingStore = useSettingStore()
 const wordPersistence = usePracticeWordPersistence()
+const dataSync = useDataSyncPersistence()
 const router = useRouter()
 const { nav } = useNav()
 const runtimeStore = useRuntimeStore()
@@ -84,6 +86,14 @@ function resetCacheData() {
   practiceData.practiceData = null
   practiceData.statStoreData = null
   wordPersistence.clear()
+}
+
+/**
+ * 清空练习缓存前，将进行中的统计数据落库到 store.sdict.statistics，避免学习记录丢失
+ */
+function saveStatBeforeClear() {
+  if (!isSaveData) return
+  flushStatToStore(practiceData.statStoreData)
 }
 
 // runtimeStore.globalLoading练习界面，退出时会调用一个保存，可能会卡住。当调用完成再init
@@ -400,12 +410,15 @@ function check(cb: Function) {
 
 async function savePracticeSetting() {
   Toast.success('修改成功')
+  saveStatBeforeClear()
   resetCacheData()
   await store.changeDict(runtimeStore.editDict)
   practiceData.taskWords = getCurrentStudyWord()
 }
 
 async function onShufflePracticeSettingOk(total) {
+  saveStatBeforeClear()
+  await dataSync.saveDictState()
   resetCacheData()
   settingStore.wordPracticeMode = editingWordPracticeMode
 
@@ -441,6 +454,7 @@ async function saveLastPracticeIndex(e) {
   // runtimeStore.editDict.complete = e >= runtimeStore.editDict.length - 1
   showChangeLastPracticeIndexDialog = false
   isSaveData = false
+  saveStatBeforeClear()
   resetCacheData()
   await store.changeDict(runtimeStore.editDict)
   practiceData.taskWords = getCurrentStudyWord()

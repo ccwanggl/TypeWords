@@ -41,7 +41,7 @@ import { addStat, setUserDictProp } from '@typewords/core/apis'
 import GroupList from '@typewords/core/components/word/GroupList.vue'
 import { getPracticeWordCacheLocal } from '@typewords/core/utils/cache.ts'
 import { useDataSyncPersistence } from '@typewords/core/composables/useDataSyncPersistence.ts'
-import { usePracticeWordPersistence } from '@typewords/core/composables/usePracticePersistence.ts'
+import { flushStatToStore, usePracticeWordPersistence } from '@typewords/core/composables/usePracticePersistence.ts'
 import { ShortcutKey, WordPracticeMode, WordPracticeStage, WordPracticeType } from '@typewords/core/types/enum.ts'
 import ConflictNotice2 from '@typewords/core/components/dialog/ConflictNotice2.vue'
 import { createEmptyCard, Rating } from 'ts-fsrs'
@@ -510,58 +510,8 @@ async function complete() {
       statStore.segments[statStore.segments.length - 1][1] = Date.now()
     }
 
-    // 按自然日对 segments 分组，每天生成一条 Statistics 记录
-    // dayKey -> { firstStart, totalSpend, daySegments }
-    type DayGroup = { firstStart: number; totalSpend: number; daySegments: [number, number][] }
-    const dayMap = new Map<string, DayGroup>()
-
-    if (statStore.segments.length > 0) {
-      for (const [segStart, segEnd] of statStore.segments) {
-        const dayKey = dayjs(segStart).format('YYYY-MM-DD')
-        if (!dayMap.has(dayKey)) {
-          dayMap.set(dayKey, { firstStart: segStart, totalSpend: 0, daySegments: [] })
-        }
-        const group = dayMap.get(dayKey)!
-        group.totalSpend += segEnd - segStart
-        group.daySegments.push([segStart, segEnd])
-      }
-    }
-
-    const dayKeys = [...dayMap.keys()]
-    if (dayKeys.length <= 1) {
-      // 单天或无 segments 兜底：行为与原有逻辑完全一致
-      const statistics = {
-        spend: statStore.spend,
-        startDate: statStore.startDate,
-        total: statStore.total,
-        wrong: statStore.wrong,
-        new: statStore.newWordNumber,
-        review: statStore.reviewWordNumber,
-        segments: dayKeys.length === 1 ? dayMap.get(dayKeys[0])!.daySegments : undefined,
-        sessionRole: 'single' as const,
-      }
-      store.sdict.statistics.push(statistics)
-    } else {
-      // 跨天练习：按天拆分，每天一条记录，total/new/review/wrong 共享（因为无法拆分到各天）
-      const baseInfo = {
-        total: statStore.total,
-        wrong: statStore.wrong,
-        new: statStore.newWordNumber,
-        review: statStore.reviewWordNumber,
-      }
-      dayKeys.forEach((dayKey, idx) => {
-        const group = dayMap.get(dayKey)!
-        const sessionRole =
-          idx === 0 ? 'start' : idx === dayKeys.length - 1 ? 'end' : 'middle'
-        store.sdict.statistics.push({
-          ...baseInfo,
-          spend: group.totalSpend,
-          startDate: group.firstStart,
-          segments: group.daySegments,
-          sessionRole: sessionRole as 'start' | 'middle' | 'end',
-        })
-      })
-    }
+    // 按自然日对 segments 分组，每天生成一条 Statistics 记录，落库到 store.sdict.statistics
+    flushStatToStore(statStore.$state)
 
     for (const [word, wrongTimes] of Object.entries(data.wrongTimesMap)) {
       let rating = data.ratingMap[word]

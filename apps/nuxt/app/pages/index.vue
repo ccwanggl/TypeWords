@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { APP_NAME, GITHUB } from '@typewords/core/config/env.ts'
+import { APP_NAME, GITHUB, Origin } from '@typewords/core/config/env.ts'
 import { BaseIcon } from '@typewords/base'
 import { getSystemTheme, listenToSystemThemeChange, setTheme, swapTheme } from '@typewords/core/hooks/theme.ts'
 import ChannelIcons from '@typewords/core/components/channel-icons/ChannelIcons.vue'
@@ -374,6 +374,17 @@ let mobileMenuOpen = $ref(false)
             >
               {{ APP_NAME }}
             </h1>
+             <!-- Site URL badge -->
+            <div class="flex justify-center lg:justify-start mt-5">
+              <a
+                :href="Origin"
+                target="_blank"
+                class="inline-flex items-center gap-1.5 text-[.8rem] text-[var(--hw-text-3)] no-underline px-3 py-1.5 rounded-full border border-[var(--hw-border)] bg-[var(--hw-bg-card)] hover:border-[#7c3aed] hover:text-[#7c3aed] transition-all duration-150 tracking-wide"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 opacity-70"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                <span>{{ Origin }}</span>
+              </a>
+            </div>
             <!-- Sub -->
             <p class="text-[clamp(.95rem,2.5vw,1.2rem)] text-[var(--hw-text-2)] mb-5 leading-[1.65]">
               打字记单词，科学间隔复习，一次敲击，一点进步

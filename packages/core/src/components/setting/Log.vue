@@ -1,6 +1,10 @@
 <script setup lang="ts">
 let logList = [
   {
+    date: '2026/04/23',
+    content: '修复切换词典/修改练习时，丢失暂存练习数据',
+  }, 
+  {
     date: '2026/04/21',
     content: '新增 TTS 音色选项',
   }, 

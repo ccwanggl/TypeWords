@@ -40,7 +40,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { wordDelete } from '@typewords/core/apis/words.ts'
 import { copyOfficialDict } from '@typewords/core/apis/dict.ts'
-import { PRACTICE_WORD_CACHE } from '@typewords/core/utils/cache.ts'
+import { getPracticeWordCacheLocal, PRACTICE_WORD_CACHE } from '@typewords/core/utils/cache.ts'
+import { flushStatToStore } from '@typewords/core/composables/usePracticePersistence'
 import { Sort, WordPracticeMode } from '@typewords/core/types/enum.ts'
 import saveAs from 'file-saver'
 
@@ -291,7 +292,9 @@ async function startPractice(query = {}) {
   if (![WordPracticeMode.Free, WordPracticeMode.System].includes(settingStore.wordPracticeMode)) {
     settingStore.wordPracticeMode = WordPracticeMode.System
   }
-  // console.log(1)
+  // 切换词典前，先将进行中的练习统计落库，避免学习记录丢失
+  const cachedBeforeSwitch = getPracticeWordCacheLocal()
+  flushStatToStore((cachedBeforeSwitch as any)?.statStoreData)
   localStorage.removeItem(PRACTICE_WORD_CACHE.key)
   studyLoading = true
   await base.changeDict(runtimeStore.editDict)
