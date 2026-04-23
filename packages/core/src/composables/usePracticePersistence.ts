@@ -137,7 +137,7 @@ export function usePracticeWordPersistence() {
 
   async function load(): Promise<PracticeWordCache | null> {
     const res = await fetch()
-    return res ?? restorePracticeWordCache(getPracticeWordCacheLocal())
+    return res ?? restorePracticeWordCache(await getPracticeWordCacheLocal())
   }
 
   async function fetch(): Promise<PracticeWordCache | null> {
@@ -150,7 +150,7 @@ export function usePracticeWordPersistence() {
   }
 
   async function getLocalDataCompact(): Promise<PracticeWordCacheStored> {
-    return getPracticeWordCacheLocal()
+    return await getPracticeWordCacheLocal()
   }
 
   async function save(data: PracticeWordCache | null) {
@@ -170,11 +170,11 @@ export function usePracticeArticlePersistence() {
 
   async function load(): Promise<PracticeArticleCache | null> {
     const res = await fetch()
-    return res ?? getPracticeArticleCacheLocal()
+    return res ?? await getPracticeArticleCacheLocal()
   }
 
   async function getLocalDataCompact(): Promise<PracticeArticleCache | null> {
-    return getPracticeArticleCacheLocal()
+    return await getPracticeArticleCacheLocal()
   }
 
   async function fetch(): Promise<PracticeArticleCache | null> {

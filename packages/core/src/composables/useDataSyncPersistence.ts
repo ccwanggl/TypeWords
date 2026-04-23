@@ -87,10 +87,10 @@ function getSyncClient(client?: SupabaseClient | null): SupabaseClient | null {
 
 async function getLocalPersistMeta(type: SyncDataType): Promise<LocalPersistMeta | null> {
   if (type === SyncDataType.practice_word) {
-    return getPracticeWordCacheLocalWithMeta()
+    return await getPracticeWordCacheLocalWithMeta()
   }
   if (type === SyncDataType.practice_article) {
-    return getPracticeArticleCacheLocalWithMeta()
+    return await getPracticeArticleCacheLocalWithMeta()
   }
   const raw = await get(getPersistKey(type))
   try {
@@ -102,11 +102,11 @@ async function getLocalPersistMeta(type: SyncDataType): Promise<LocalPersistMeta
 
 async function persistLocalState(type: SyncDataType, val: unknown, updated_at?: string): Promise<void> {
   if (type === SyncDataType.practice_word) {
-    setPracticeWordCacheLocal(val as PracticeWordCacheStored, updated_at)
+    await setPracticeWordCacheLocal(val as PracticeWordCacheStored, updated_at)
     return
   }
   if (type === SyncDataType.practice_article) {
-    setPracticeArticleCacheLocal(val as PracticeArticleCache, updated_at)
+    await setPracticeArticleCacheLocal(val as PracticeArticleCache, updated_at)
     return
   }
   await set(
@@ -327,10 +327,8 @@ export async function saveHashSnapshot(currentHash: string, previousHash: string
     data: {
       dict: await get(SAVE_DICT_KEY.key),
       setting: await get(SAVE_SETTING_KEY.key),
-      //@ts-ignore
-      [PRACTICE_WORD_CACHE.key]: import.meta.client ? localStorage.getItem(PRACTICE_WORD_CACHE.key) : null,
-      //@ts-ignore
-      [PRACTICE_ARTICLE_CACHE.key]: import.meta.client ? localStorage.getItem(PRACTICE_ARTICLE_CACHE.key) : null,
+      [PRACTICE_WORD_CACHE.key]: await get(PRACTICE_WORD_CACHE.key) ?? null,
+      [PRACTICE_ARTICLE_CACHE.key]: await get(PRACTICE_ARTICLE_CACHE.key) ?? null,
     },
   }
   if (!snapshot.data.dict) {
@@ -569,9 +567,9 @@ export function useDataSyncPersistence() {
     await saveLocalAndSync(SyncDataType.dict, data, { ...options, canSyncRemote })
   }
 
-  function getLocalCompactDataByType(type: SyncDataType) {
-    if (type === SyncDataType.practice_word) return getPracticeWordCacheLocal()
-    if (type === SyncDataType.practice_article) return getPracticeArticleCacheLocal()
+  async function getLocalCompactDataByType(type: SyncDataType) {
+    if (type === SyncDataType.practice_word) return await getPracticeWordCacheLocal()
+    if (type === SyncDataType.practice_article) return await getPracticeArticleCacheLocal()
     if (type === SyncDataType.dict) return shakeCommonDict(store.$state)
     if (type === SyncDataType.setting) return settingStore.$state
   }
