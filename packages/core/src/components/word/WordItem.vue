@@ -39,14 +39,14 @@ const { isWordCollect, toggleWordCollect, isWordSimple, toggleWordSimple } = use
   <div class="common-list-item" :class="{ active, disabled }">
     <div class="left">
       <slot name="prefix" :item="item"></slot>
-      <div class="title-wrapper" :class="!showWord && 'word-shadow'">
+      <div class="title-wrapper">
         <div class="item-title">
           <span class="text-sm translate-y-0.5 text-gray-500" v-if="index != undefined">{{ index }}.</span>
-          <span class="word">{{ item.word }}</span>
+          <span class="word" :class="!showWord && 'word-shadow'">{{ item.word }}</span>
           <span class="phonetic text-gray" :class="!showWord && 'word-shadow'">{{ item.phonetic0 }}</span>
           <VolumeIcon class="volume" @click="playWordAudio(item.word)"></VolumeIcon>
         </div>
-        <TranslationList :word="item" :showFull="showWord" />
+        <TranslationList :pos-space="false" :word="item" :showFull="showWord" v-if="showTranslate" />
       </div>
     </div>
     <div class="right" v-if="showOption">

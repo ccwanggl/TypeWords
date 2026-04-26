@@ -1,15 +1,18 @@
 <script setup lang="ts">
-import { useSettingStore } from '../../stores'
 import { Word } from '../../types'
-import { computed } from 'vue';
+import { computed } from 'vue'
 import SentenceHightLightWord from './SentenceHightLightWord.vue'
 
-const props = defineProps<{
-  word: Word,
-  showFull: boolean,
-}>()
-
-const settingStore = useSettingStore()
+const props = withDefaults(
+  defineProps<{
+    word: Word
+    showFull: boolean
+    posSpace?: boolean // 词性是否需要固定占位
+  }>(),
+  {
+    posSpace: true,
+  }
+)
 
 const posList = computed<{ pos: string; totalFreq?: number; trans: { pos: string; cn: string; frequency?: number }[] }[]>(() => {
     const trans = props.word.trans
@@ -37,24 +40,27 @@ const posList = computed<{ pos: string; totalFreq?: number; trans: { pos: string
 )
 </script>
 <template>
-    <div
-      class="translate flex flex-col gap-2 my-3"
-      :style="{
-        fontSize: settingStore.fontSize.wordTranslateFontSize + 'px',
-      }"
-    >
-      <div class="flex" v-for="pos in posList">
-        <div class="shrink-0 pos" :class="pos.pos ? 'w-12' : '-ml-3'">
-          {{ pos.pos }}
-        </div>
-        <div class="flex gap-3 flex-wrap items-end">
-          <span v-for="tran in pos.trans">
-            <span v-if="tran.frequency != undefined" :class="['rare', 'uncommon', 'common'][tran.frequency]">{{ tran.cn }}</span>
-            <SentenceHightLightWord v-else :text="tran.cn" :word="word.word" :dictation="!props.showFull" :high-light="false" />
-          </span>
-        </div>
+  <div>
+    <div class="flex" v-for="pos in posList">
+      <div class="shrink-0 pos" :class="posSpace && (pos.pos ? 'w-12' : '-ml-3')">
+        {{ pos.pos }}&nbsp;
+      </div>
+      <div class="flex space-x-3 flex-wrap items-end">
+        <span v-for="tran in pos.trans">
+          <span v-if="tran.frequency != undefined" :class="['rare', 'uncommon', 'common'][tran.frequency]">{{
+            tran.cn
+          }}</span>
+          <SentenceHightLightWord
+            v-else
+            :text="tran.cn"
+            :word="word.word"
+            :dictation="!props.showFull"
+            :high-light="false"
+          />
+        </span>
       </div>
     </div>
+  </div>
 </template>
 <style scoped lang="scss">
 .rare {

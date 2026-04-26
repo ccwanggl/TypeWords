@@ -7,6 +7,7 @@ import {
   DictType,
   getDefaultDict,
   getDefaultWord,
+  IdentifyMethod,
   SaveData,
   ShortcutKey,
 } from '../types'
@@ -152,6 +153,7 @@ export async function checkAndUpgradeSaveSetting(val: any) {
       checkRiskKey(defaultState.shortcutKeyMap, state.shortcutKeyMap)
 
       let updateLocalData = false
+      //移除单独保存的 app version字段，转移到 settingStore的webAppVersion里面
       if (version <= 17) {
         defaultState.webAppVersion = (await get(APP_VERSION.key)) ?? APP_VERSION.version
         updateLocalData = true
@@ -159,6 +161,7 @@ export async function checkAndUpgradeSaveSetting(val: any) {
       //3/20晚上10点25推的代码，这个地方出了一个bug，ShortcutKey没导入，导致抛异常后返回了默认值，所有的用户的setting都变成默认值了。
       //在这里读取之前的快照，如果存在则从里面读取setting的firstTime，
       //判断是否与当前值相等，不相等则取快照的值并将本地的update_at更新，以免被远程覆盖
+      // 修复19版本未导入变量，导致抛错所有用户setting变默认值的bug
       if (version === 19) {
         try {
           const snapshotCutoffTime = new Date('2026-03-20T22:25:00+08:00').getTime()
@@ -188,8 +191,16 @@ export async function checkAndUpgradeSaveSetting(val: any) {
         }
       }
 
+      //修复快捷键下一个单词和跳过单词重复了
       if (version <= 20) {
         defaultState.shortcutKeyMap[ShortcutKey.Next] = DefaultShortcutKeyMap[ShortcutKey.Next]
+        updateLocalData = true
+      }
+
+      //合并单独的快速自测选项到新的合并选项中
+      if (version <= 21) {
+        //如果用户之前是快速自测
+        if (state.quickIdentify) state.identifyMethod = IdentifyMethod.QuickIdentify
         updateLocalData = true
       }
 

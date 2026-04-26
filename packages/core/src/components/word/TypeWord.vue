@@ -766,7 +766,7 @@ const isCollect = $computed(() => isWordCollect(props.word))
         </BaseButton>
       </div>
 
-      <div v-if="isWordTest && !showWordResult" class="flex gap-8 flex-col mt-16 mb-8 w-full">
+      <div v-if="isWordTest && !showWordResult" class="flex gap-8 flex-col my-8 w-full">
         <div
           v-for="(value, index) in question?.candidates ?? []"
           class="flex gap-2 min-h-20"
@@ -805,10 +805,16 @@ const isCollect = $computed(() => isWordCollect(props.word))
           @close="settingStore.showUsageTips = false"
         />
       </div>
-    </div>
 
-    <div v-if="settingStore.translate || showFullWord || showWordResult">
-      <TranslationList :word="word" :showFull="showFullWord || showWordResult"/>
+      <div
+        class="translate flex flex-col gap-2 my-3"
+        v-opacity="settingStore.translate || showWordResult || showFullWord"
+        :style="{
+          fontSize: settingStore.fontSize.wordTranslateFontSize + 'px',
+        }"
+      >
+        <TranslationList :word="word" :showFull="!settingStore.dictation || showWordResult || showFullWord" />
+      </div>
     </div>
 
     <div
