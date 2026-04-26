@@ -231,7 +231,7 @@ onUnmounted(() => {
     savePracticeDataIns('onUnmounted')
   }
   timer && clearInterval(timer)
-  watchRefList.map(v => v.stop())
+  watchRefList.map(v => v?.stop())
 })
 
 watchOnce(

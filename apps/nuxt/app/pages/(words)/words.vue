@@ -16,6 +16,7 @@ import {
   _getAccomplishDate,
   _getDictDataByUrl,
   _nextTick,
+  debounce,
   isMobile,
   loadJsLib,
   msToHourMinute,
@@ -97,9 +98,10 @@ function saveStatBeforeClear() {
 }
 
 // runtimeStore.globalLoading练习界面，退出时会调用一个保存，可能会卡住。当调用完成再init
+//  immediate: true 比 onUmMounted 先执行，只能延时执行
 watch(
   [() => store.load, () => runtimeStore.globalLoading],
-  ([a, b]) => {
+  debounce(([a, b]) => {
     if (a && !b) {
       init()
       _nextTick(async () => {
@@ -129,7 +131,7 @@ watch(
         if (settingStore.first && !r && !isMobile()) tour.start()
       }, 500)
     }
-  },
+  }, ),
   { immediate: true }
 )
 
@@ -253,10 +255,9 @@ const cacheDaySpendMap = $computed((): Map<string, number> => {
     // 老数据 / 无 segments：全部归到 startDate 那天
     map.set(dayjs(st.startDate).format('YYYY-MM-DD'), st.spend)
   }
-  console.log('map',map,practiceData.statStoreData)
+  // console.log('map',map,practiceData.statStoreData)
   return map
 })
-
 
 const todayCacheMs = $computed(() => cacheDaySpendMap.get(todayDateKey) ?? 0)
 
@@ -703,7 +704,7 @@ onUnmounted(() => {
       </div>
     </div>
 
-   <div class="card flex flex-col md:flex-row gap-4 xl:gap-20 p-4 md:p-6">
+    <div class="card flex flex-col md:flex-row gap-4 xl:gap-20 p-4 md:p-6">
       <div class="flex-1 flex flex-col gap-3 min-w-0">
         <div class="title">统计</div>
         <div class="flex gap-3 items-center w-full">
@@ -731,7 +732,6 @@ onUnmounted(() => {
       </div>
     </div>
 
-    
     <div class="card flex flex-col">
       <div class="flex justify-between">
         <div class="title">{{ $t('my_dictionaries') }}</div>

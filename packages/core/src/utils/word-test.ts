@@ -70,7 +70,7 @@ function calSimilarity(word1: Word, word2: Word): number {
         word2.relWords.rels.findIndex(rel => rel.words.findIndex(word => word.c === word1.word) !== -1) !== -1
     ) {
         similarity += 1 << 20;
-        console.log('relWords', word1.word, word2.word)
+        // console.log('relWords', word1.word, word2.word)
     }
     return similarity;
 }
@@ -94,7 +94,7 @@ export function buildQuestion(word: Word, list: Word[], maxCount: number = 4): Q
     let candidates = similarityList.slice(-(Math.min(maxCount - 1, similarityList.length))).map(v => ({ word: v.word, similarity: v.similarity }))
     candidates.push({ word: word, similarity: Infinity })
     candidates = shuffle(candidates)
-    console.log(candidates)
+    // console.log(candidates)
     const correctIndex = candidates.findIndex(v => v.word === word)
     return {
         candidates,

@@ -101,6 +101,7 @@ async function getLocalPersistMeta(type: SyncDataType): Promise<LocalPersistMeta
 }
 
 async function persistLocalState(type: SyncDataType, val: unknown, updated_at?: string): Promise<void> {
+  // console.log('persistLocalState',type,updated_at)
   if (type === SyncDataType.practice_word) {
     await setPracticeWordCacheLocal(val as PracticeWordCacheStored, updated_at)
     return
@@ -204,38 +205,12 @@ async function compareResultByType(
   return shouldFetchRemote(localMeta.updated_at, remoteMeta.updated_at, remoteMeta.data_version, currentVersion)
 }
 
-//todo 合并
-async function upsertServerData(
-  type: SyncDataType,
-  data: unknown,
-  updated_at: string,
-  client?: SupabaseClient | null
-): Promise<boolean> {
-  const sb = getSyncClient(client)
-  if (!sb) return false
-  console.log('Upserting server data', type)
-  const data_version = getDataVersion(type)
-  try {
-    const { error } = await (sb as any)
-      .from('typewords_data')
-      .upsert({ type, data, updated_at, data_version }, { onConflict: 'type' })
-    if (error) {
-      Supabase.setStatus('error', error?.message ?? String(error))
-      return false
-    }
-    return true
-  } catch (e) {
-    Supabase.setStatus('error', (e as Error)?.message ?? String(e))
-    return false
-  }
-}
-
 async function upsertServerDatas(rows: RemoteDataRow[], client?: SupabaseClient | null): Promise<boolean> {
   const sb = getSyncClient(client)
   if (!sb) return false
   try {
     console.log(
-      'Upserting server data list',
+      'Upserting server data',
       rows.map(row => row.type)
     )
     const { error } = await (sb as any).from('typewords_data').upsert(rows, { onConflict: 'type' })
@@ -362,7 +337,6 @@ export async function saveHashSnapshot(currentHash: string, previousHash: string
 export function useDataSyncPersistence() {
   const store = useBaseStore()
   const settingStore = useSettingStore()
-  const runtimeStore = useRuntimeStore()
 
   async function pullIfRemoteNewer(type: SyncDataType, client?: SupabaseClient | null): Promise<RemoteDataRow | null> {
     const remoteMetas = await fetchServerMeta([type], client)
@@ -430,6 +404,7 @@ export function useDataSyncPersistence() {
     try {
       //先取出本地数据的meta值，以用后续与云端数据比较
       const localMeta = await getLocalPersistMeta(type)
+      // console.log('saveLocalAndSync-localMeta', localMeta)
       //先保存，再同步
       const updated_at = new Date().toISOString()
       await persistLocalState(type, data, updated_at)
@@ -438,19 +413,21 @@ export function useDataSyncPersistence() {
       if (!canSyncRemote) return
       const remoteMetas = await fetchServerMeta([type], options?.client)
       if (!remoteMetas) return
-      const pullWhenRemoteNewer = options?.pullWhenRemoteNewer !== false
       const remoteMetaMap = new Map(remoteMetas.map(item => [item.type, item]))
+      // console.log('saveLocalAndSync-remoteMetaMap', remoteMetaMap.get(type))
       const compareResult = await compareResultByType(type, remoteMetaMap, localMeta)
-      console.log('saveLocalAndSync-compareResult', CompareResult[compareResult], type, pullWhenRemoteNewer)
+      console.log('saveLocalAndSync-compareResult', CompareResult[compareResult], type)
       //如果云端数据较新并允许拉取，则拉取云端数据，之后不再上传本地数据
-      if (compareResult === CompareResult.RemoteNewer && pullWhenRemoteNewer) {
+      if (compareResult === CompareResult.RemoteNewer && options?.pullWhenRemoteNewer !== false) {
         const remoteData = await fetchServerDatas([type], options?.client)
         if (remoteData?.length) {
           await applyRemoteDataByType(type, remoteData[0], store, settingStore)
-          return
         }
+        //防止后端数据为空，本地强制上传了
+        return
       }
-      await upsertServerData(type, data, updated_at, options?.client)
+      const data_version = getDataVersion(type)
+      await upsertServerDatas([{ type, data, data_version, updated_at }],options?.client)
     } finally {
       if (Supabase.getStatus()?.status !== 'error') {
         Supabase.setStatus('success')
