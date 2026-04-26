@@ -48,7 +48,7 @@ function calSimilarity(word1: Word, word2: Word): number {
     })
 
     similarity += getCommonCount(word1Trans.map(item => item.cn).join(''), word2Trans.map((item) => item.cn).join(''));
-    similarity += getCommonCount(word1.word, word2.word);
+    similarity += getCommonCount(word1.word, word2.word) << 16;
 
     return similarity;
 }
