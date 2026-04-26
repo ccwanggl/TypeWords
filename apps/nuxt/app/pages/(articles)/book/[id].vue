@@ -271,12 +271,7 @@ watch(
             <template v-if="selectArticle.id">
               <template v-if="selectArticle.id === -1">
                 <div class="flex gap-4 mt-2">
-                  <NuxtImg
-                    :src="runtimeStore.editDict?.cover"
-                    class="w-30 rounded-md"
-                    v-if="runtimeStore.editDict?.cover"
-                    alt=""
-                  />
+                  <NuxtImg :src="runtimeStore.editDict?.cover" class="w-30 rounded-md" v-if="runtimeStore.editDict?.cover" alt="" />
                   <div class="text-lg">{{ runtimeStore.editDict.description }}</div>
                 </div>
                 <div class="text-base mt-10" v-if="totalSpend">{{ $t('total_study_time') }}：{{ totalSpend }}</div>

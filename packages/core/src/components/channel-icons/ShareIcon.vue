@@ -7,6 +7,7 @@ import { loadJsLib, msToHourMinute } from '../../utils'
 import dayjs from 'dayjs'
 import { useUserStore } from '../../stores/user.ts'
 import { defineAsyncComponent } from 'vue'
+import { withAppBaseURL } from '../../utils/base-url'
 
 const Dialog = defineAsyncComponent(() => import('@typewords/base/Dialog'))
 
@@ -177,16 +178,20 @@ const sentence = $computed(() => {
           <div class="bg-gray-900/30 py-4 rounded-2xl p-4">
             <div class="flex justify-between items-end">
               <div class="space-y-2">
-                <div class="font-bold text-2xl">Type Words</div>
-                <div class="text-base">{{ Origin }}</div>
-                <div class="text-xs">一次敲击，一点进步，开源单词学习工具</div>
-              </div>
-              <img :src="`/imgs/share/qr.png`" class="w-20 w-20 rounded-md overflow-hidden" alt="" />
+              <div class="font-bold text-2xl">Type Words</div>
+              <div class="text-base">{{ Origin }}</div>
+              <div class="text-xs">一次敲击，一点进步，开源单词学习工具</div>
+            </div>
+              <img :src="withAppBaseURL('/imgs/share/qr.png')" class="w-20 w-20 rounded-md overflow-hidden" alt="" />
             </div>
           </div>
         </div>
 
-        <img :src="`/imgs/share/bg/${imgIndex}.jpg`" class="w-full object-cover object-center absolute top-0" alt="" />
+        <img
+          :src="withAppBaseURL(`/imgs/share/bg/${imgIndex}.jpg`)"
+          class="w-full object-cover object-center absolute top-0"
+          alt=""
+        />
       </div>
 
       <!-- 右侧：分享引导区域 -->

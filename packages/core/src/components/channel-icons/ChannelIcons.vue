@@ -4,6 +4,7 @@ import { defineAsyncComponent } from 'vue'
 import ShareIcon from './ShareIcon.vue'
 import WeChat from './WeChat.vue'
 import Github from './Github.vue'
+import { withAppBaseURL } from '../../utils/base-url'
 
 withDefaults(
   defineProps<{
@@ -23,6 +24,9 @@ const Dialog = defineAsyncComponent(() => import('@typewords/base/Dialog'))
 
 let showXhsDialog = $ref(false)
 let showQQDialog = $ref(false)
+
+const xhsQrSrc = withAppBaseURL('/imgs/channel/xhs.png')
+const qqQrSrc = withAppBaseURL('/imgs/channel/qq.jpg')
 </script>
 
 <template>
@@ -69,7 +73,7 @@ let showQQDialog = $ref(false)
         {{ $t('xiaohongshu_desc') }}
       </div>
       <div class="text-center">
-        <img src="/imgs/channel/xhs.png" :alt="$t('xiaohongshu_qrcode')" class="w-70 rounded-xl shadow-lg" />
+        <img :src="xhsQrSrc" :alt="$t('xiaohongshu_qrcode')" class="w-70 rounded-xl shadow-lg" />
       </div>
     </div>
   </Dialog>
@@ -80,7 +84,7 @@ let showQQDialog = $ref(false)
         <span>{{ $t('community_desc') }}</span>
       </div>
       <div class="text-center">
-        <img src="/imgs/channel/qq.jpg" :alt="$t('qq_qrcode')" class="w-70 rounded-xl shadow-lg" />
+        <img :src="qqQrSrc" :alt="$t('qq_qrcode')" class="w-70 rounded-xl shadow-lg" />
       </div>
     </div>
   </Dialog>
