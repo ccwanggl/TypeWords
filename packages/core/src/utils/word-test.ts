@@ -52,7 +52,19 @@ function calSimilarity(word1: Word, word2: Word): number {
 
     similarity += calCommon(word1Trans.map(item => item.cn).join(''), word2Trans.map((item) => item.cn).join(''));
     similarity += calCommon(word1.word, word2.word) << 16;
-
+    if (
+        word1.word.includes(word2.word) ||
+        word2.word.includes(word1.word)
+    ) {
+        similarity += 1 << 20;
+    }
+    if (
+        word1.relWords.rels.findIndex(rel => rel.words.findIndex(word => word.c === word2.word) !== -1) !== -1 ||
+        word2.relWords.rels.findIndex(rel => rel.words.findIndex(word => word.c === word1.word) !== -1) !== -1
+    ) {
+        similarity += 1 << 20;
+        console.log('relWords', word1.word, word2.word)
+    }
     return similarity;
 }
 
