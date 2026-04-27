@@ -111,7 +111,7 @@ export function getCurrentStudyWord(): TaskWords {
     const perDay = dict.perDayStudyNumber
     const start = isTest ? 1 : dict.lastLearnIndex
     const complete = isTest ? true : dict.complete
-    const isEnd = start >= dict.length - 1
+    const isEnd = start >= dict.length - 1 && dict.length !== 1
     const reviewRatio = settingStore.wordReviewRatio
 
     let end = start
