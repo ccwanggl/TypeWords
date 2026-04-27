@@ -77,7 +77,7 @@ watch(
           <BaseInput class="target-number" v-model="tempPerDayStudyNumber" />
         </div>
         <span>{{ $t('new_words_count2') }}</span>
-        <span>，{{ $t('review') }}</span>
+        <span>，最多复习</span>
         <div class="target-number mx-2">
           {{ (tempPerDayStudyNumber * tempWordReviewRatio) || '-'}}
         </div>

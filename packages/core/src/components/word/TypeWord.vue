@@ -6,7 +6,7 @@ import { getBrowserKey, usePlayBeep, usePlayCorrect, usePlayKeyboardAudio, usePl
 import { emitter, EventKey, useEventsByWatch } from '../../utils/eventBus'
 import { onMounted, onUnmounted, watch } from 'vue'
 import SentenceHightLightWord from './SentenceHightLightWord.vue'
-import { _nextTick, last } from '../../utils'
+import { _nextTick, last, normalizeWord } from '../../utils'
 import { BaseButton, BaseIcon, Toast, ToastComponent, Tooltip, VolumeIcon } from '@typewords/base'
 import Space from '../article/Space.vue'
 import { useI18n } from 'vue-i18n'
@@ -174,16 +174,22 @@ let showWordResult = ref(false)
 let pressNumber = 0
 
 const right = $computed(() => {
-  let target
+  let a = input
+  let b
   if (isTypingSentence()) {
-    target = props.word.sentences[currentPracticeSentenceIndex].c
+    b = props.word.sentences[currentPracticeSentenceIndex].c
   } else {
-    target = props.word.word
+    b = props.word.word
+  }
+
+  if (settingStore.wordPracticeType === WordPracticeType.Dictation) {
+    a = normalizeWord(a)
+    b = normalizeWord(b)
   }
   if (settingStore.ignoreCase) {
-    return input.toLowerCase() === target.toLowerCase()
+    return a.toLowerCase() === b.toLowerCase()
   } else {
-    return input === target
+    return a === b
   }
 })
 
@@ -326,7 +332,7 @@ async function onTyping(e: KeyboardEvent) {
       // 这里inputLock 不设为 false，不能再输入了，只能删除（删除会重置 inputLock）或按空格切下一格
       if (input.length && (input.length >= target.length || !target.includes(' '))) {
         //比对是否一致
-        if (input.toLowerCase() === target.toLowerCase()) {
+        if (right) {
           //如果已显示单词，则发射完成事件，并 return
           if (showWordResult.value) {
             return emit('complete')
@@ -771,13 +777,8 @@ const isCollect = $computed(() => isWordCollect(props.word))
           v-for="(value, index) in question?.candidates ?? []"
           class="flex gap-2 min-h-20"
           :class="{
-            'text-green-600':
-              completeSelect &&
-              index === props?.question?.correctIndex,
-            'text-red-600':
-              completeSelect &&
-              index !== props?.question?.correctIndex &&
-              index === selectIndex,
+            'text-green-600': completeSelect && index === props?.question?.correctIndex,
+            'text-red-600': completeSelect && index !== props?.question?.correctIndex && index === selectIndex,
           }"
         >
           <BaseButton
@@ -790,7 +791,7 @@ const isCollect = $computed(() => isWordCollect(props.word))
             <div class="min-h-10 text-2xl" :class="{ 'word-shadow': !showAllCandidates && !completeSelect }">
               {{ value.word.word }}
             </div>
-            <TranslationList :word="value.word" :showFull="showAllCandidates || completeSelect"/>
+            <TranslationList :word="value.word" :showFull="showAllCandidates || completeSelect" />
           </span>
         </div>
       </div>

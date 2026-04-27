@@ -656,3 +656,29 @@ export function isEmpty(obj: any): boolean {
   }
   return obj === null || obj === undefined || obj === ''
 }
+
+const charMap = {
+  '’': "'",
+  '‘': "'",
+  '“': '"',
+  '”': '"',
+  ' ': ' ',
+  '。': '.',
+  '，': ',',
+  '？': '?',
+  '【': '[',
+  '】': ']',
+  '￥': '$',
+  '！': '!',
+  '（': '(',
+  '）': ')',
+  '《': '<',
+  '》': '>',
+}
+
+export function normalizeWord(word: string) {
+  return word
+    .split('')
+    .map(ch => charMap[ch] || ch)
+    .join('')
+}
