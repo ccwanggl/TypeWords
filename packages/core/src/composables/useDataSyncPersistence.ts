@@ -55,6 +55,8 @@ type SaveLocalAndSyncOptions = {
   canSyncRemote?: boolean
 }
 
+const DICT_SYNC_BLOCK_REASON = '检测到自定义文章里面有自定义音频，无法使用同步功能'
+
 const ALL_SYNC_TYPES: SyncDataType[] = [
   SyncDataType.dict,
   SyncDataType.setting,
@@ -256,6 +258,20 @@ async function applyRemoteDataByType(
     return
   }
   await persistLocalState(type, row.data, row.updated_at ?? now)
+}
+
+function getDictSyncBlockReason(state: BaseState): string | null {
+  const data = shakeCommonDict(state)
+  const bookList = data.article.bookList.filter(v => v.custom || [DictId.articleCollect].includes(v.id))
+  const audioFileIdList: string[] = []
+  bookList.forEach(v => {
+    v.articles
+      .filter(s => !s.audioSrc && s.audioFileId)
+      .forEach(a => {
+        audioFileIdList.push(a.audioFileId)
+      })
+  })
+  return audioFileIdList.length ? DICT_SYNC_BLOCK_REASON : null
 }
 
 type HashBackupIndexItem = {
@@ -510,18 +526,20 @@ export function useDataSyncPersistence() {
     state: BaseState = store.$state
   ): Promise<{ data: BaseState; canSyncRemote: boolean }> {
     const data = shakeCommonDict(state)
-    const bookList = data.article.bookList.filter(v => v.custom || [DictId.articleCollect].includes(v.id))
+    const blockReason = getDictSyncBlockReason(state)
     const audioFileIdList: string[] = []
+    if (blockReason) {
+      const bookList = data.article.bookList.filter(v => v.custom || [DictId.articleCollect].includes(v.id))
+      bookList.forEach(v => {
+        v.articles
+          .filter(s => !s.audioSrc && s.audioFileId)
+          .forEach(a => {
+            audioFileIdList.push(a.audioFileId)
+          })
+      })
+    }
 
-    bookList.forEach(v => {
-      v.articles
-        .filter(s => !s.audioSrc && s.audioFileId)
-        .forEach(a => {
-          audioFileIdList.push(a.audioFileId)
-        })
-    })
-
-    if (audioFileIdList.length) {
+    if (blockReason) {
       const result: Array<{ id: string; file: Blob }> = []
       const fileList = (await get(LOCAL_FILE_KEY)) as Array<{ id: string; file: Blob }> | undefined
       const files = fileList ?? []
@@ -531,7 +549,7 @@ export function useDataSyncPersistence() {
       })
       await set(LOCAL_FILE_KEY, result)
       if (Supabase.check()) {
-        Supabase.setStatus('error', '检测到自定义文章里面有自定义音频，无法使用同步功能')
+        Supabase.setStatus('error', blockReason)
       }
       return { data, canSyncRemote: false }
     }
@@ -559,5 +577,6 @@ export function useDataSyncPersistence() {
     pullAllRemoteToLocal,
     getLocalCompactDataByType,
     syncData,
+    getDictSyncBlockReason,
   }
 }
