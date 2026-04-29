@@ -7,6 +7,7 @@ import { ensureHashGuardBeforeInit, useDataSyncPersistence } from './useDataSync
 import { SyncDataType } from '../types'
 import { SubscriptionCallbackMutation } from 'pinia'
 import { onUnmounted } from 'vue'
+// import { startRrwebRecording } from './useRrweb'
 
 let unsub = null
 let unsub2 = null
@@ -119,6 +120,9 @@ export function useInit() {
     runtimeStore.isNew = APP_VERSION.version > Number(settingStore.webAppVersion)
     runtimeStore.isError = Supabase.getStatus().status === 'error'
     window.umami?.track('host', { host: window.location.host })
+
+    // 静默后台录制用户操作，数据保存到 IndexedDB
+    // startRrwebRecording().catch(console.error)
   }
 
   return init
