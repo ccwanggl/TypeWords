@@ -307,6 +307,7 @@ export function useStartKeyboardEventListener() {
         if (
           ((e.keyCode >= 65 && e.keyCode <= 90) ||
             (e.keyCode >= 48 && e.keyCode <= 57) ||
+            (e.keyCode >= 96 && e.keyCode <= 105) ||
             // 空格键已经在上面处理过了
             e.code === 'Slash' ||
             e.code === 'Quote' ||
