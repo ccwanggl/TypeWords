@@ -134,8 +134,8 @@ function handleResumeTimer() {
   if (statStore.timerPaused) {
     statStore.resumeTimer()
     Toast.success('已恢复计时')
+    bumpPracticeTimerActivity()
   }
-  bumpPracticeTimerActivity()
 }
 
 async function loadDict() {
