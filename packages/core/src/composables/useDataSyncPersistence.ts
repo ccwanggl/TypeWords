@@ -18,6 +18,7 @@ import {
   setPracticeWordCacheLocal,
 } from '../utils/cache'
 import {
+  APP_VERSION,
   BACKUP_INDEX_KEY,
   BACKUP_KEY,
   DictId,
@@ -26,12 +27,13 @@ import {
   SAVE_SETTING_KEY,
   WEBSITE_VERSION_HASH,
 } from '../config/env'
-import { type BaseState, useBaseStore, useRuntimeStore, useSettingStore } from '../stores'
+import { type BaseState, getDefaultBaseState, getDefaultSettingState, useBaseStore, useSettingStore } from '../stores'
 import { BackupData, CompareResult, DictType, SaveData, Snapshot } from '../types'
 import { SyncDataType } from '../types/enum'
 import { Supabase } from '../utils/supabase'
 import { del, get, set } from 'idb-keyval'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { Toast } from '@typewords/base'
 
 type RemoteMetaRow = {
   type: SyncDataType
@@ -318,8 +320,8 @@ export async function saveHashSnapshot(currentHash: string, previousHash: string
     data: {
       dict: await get(SAVE_DICT_KEY.key),
       setting: await get(SAVE_SETTING_KEY.key),
-      [PRACTICE_WORD_CACHE.key]: await get(PRACTICE_WORD_CACHE.key) ?? null,
-      [PRACTICE_ARTICLE_CACHE.key]: await get(PRACTICE_ARTICLE_CACHE.key) ?? null,
+      [PRACTICE_WORD_CACHE.key]: (await get(PRACTICE_WORD_CACHE.key)) ?? null,
+      [PRACTICE_ARTICLE_CACHE.key]: (await get(PRACTICE_ARTICLE_CACHE.key)) ?? null,
     },
   }
   if (!snapshot.data.dict) {
@@ -443,7 +445,7 @@ export function useDataSyncPersistence() {
         return
       }
       const data_version = getDataVersion(type)
-      await upsertServerDatas([{ type, data, data_version, updated_at }],options?.client)
+      await upsertServerDatas([{ type, data, data_version, updated_at }], options?.client)
     } finally {
       if (Supabase.getStatus()?.status !== 'error') {
         Supabase.setStatus('success')
@@ -569,6 +571,24 @@ export function useDataSyncPersistence() {
     if (type === SyncDataType.setting) return settingStore.$state
   }
 
+  async function clear() {
+    let d = getDefaultBaseState()
+    d.load = true
+    let d1 = getDefaultSettingState()
+    d1.load = true
+    let data: any = {
+      setting: { val: d },
+      dict: { val: d1 },
+      [PRACTICE_WORD_CACHE.key]: null,
+      [PRACTICE_ARTICLE_CACHE.key]: null,
+      // @deprecated 大版本5废弃
+      [APP_VERSION.key]: null,
+    }
+    store.setState(d)
+    settingStore.setState(d1)
+    return await forcePushLocalDataToRemote(data)
+  }
+
   return {
     pullIfRemoteNewer,
     saveLocalAndSync,
@@ -578,5 +598,6 @@ export function useDataSyncPersistence() {
     getLocalCompactDataByType,
     syncData,
     getDictSyncBlockReason,
+    clear,
   }
 }

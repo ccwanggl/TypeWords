@@ -439,13 +439,9 @@ function transferOk() {
   }, 1500)
 }
 
-function clearAllData() {
-  let d = getDefaultBaseState()
-  d.load = true
-  store.setState(d)
-  let d1 = getDefaultSettingState()
-  d1.load = true
-  settingStore.setState(d1)
+async function clearAllData() {
+  await dataSyncPersistence.clear()
+  Toast.error('清除成功')
 }
 
 let sbFormRef = $ref<FormType>()

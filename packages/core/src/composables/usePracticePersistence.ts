@@ -170,7 +170,7 @@ export function usePracticeArticlePersistence() {
 
   async function load(): Promise<PracticeArticleCache | null> {
     const res = await fetch()
-    return res ?? await getPracticeArticleCacheLocal()
+    return res ?? (await getPracticeArticleCacheLocal())
   }
 
   async function getLocalDataCompact(): Promise<PracticeArticleCache | null> {
@@ -191,7 +191,7 @@ export function usePracticeArticlePersistence() {
   }
 
   async function clear() {
-    await dataSync.saveLocalAndSync(SyncDataType.practice_article, null)
+    await dataSync.saveLocalAndSync(SyncDataType.practice_article, null, { pullWhenRemoteNewer: false })
   }
 
   return { load, save, clear, fetch, getLocalDataCompact }
