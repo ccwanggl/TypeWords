@@ -441,7 +441,7 @@ function transferOk() {
 
 async function clearAllData() {
   await dataSyncPersistence.clear()
-  Toast.error('清除成功')
+  Toast.success('清除成功')
 }
 
 let sbFormRef = $ref<FormType>()

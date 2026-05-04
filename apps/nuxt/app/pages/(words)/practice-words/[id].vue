@@ -42,13 +42,19 @@ import GroupList from '@typewords/core/components/word/GroupList.vue'
 import { getPracticeWordCacheLocal } from '@typewords/core/utils/cache.ts'
 import { useDataSyncPersistence } from '@typewords/core/composables/useDataSyncPersistence.ts'
 import { flushStatToStore, usePracticeWordPersistence } from '@typewords/core/composables/usePracticePersistence.ts'
-import { IdentifyMethod, ShortcutKey, WordPracticeMode, WordPracticeStage, WordPracticeType } from '@typewords/core/types/enum.ts'
+import {
+  IdentifyMethod,
+  ShortcutKey,
+  WordPracticeMode,
+  WordPracticeStage,
+  WordPracticeType,
+} from '@typewords/core/types/enum.ts'
 import ConflictNotice2 from '@typewords/core/components/dialog/ConflictNotice2.vue'
 import { createEmptyCard, Rating } from 'ts-fsrs'
 import { useGetGradeByWrongTimes, useNextCard } from '@typewords/core/hooks/fsrs.ts'
 import WordMarkPickList, { type WordMarkPickResult } from '@typewords/core/components/word/WordMarkPickList.vue'
 import { buildQuestion } from '@typewords/core/utils/word-test.ts'
-import dayjs from 'dayjs'
+import CollectNotice from '@typewords/core/components/dialog/CollectNotice.vue'
 
 const { toggleWordCollect, isWordSimple, toggleWordSimple } = useWordOptions()
 const settingStore = useSettingStore()
@@ -64,6 +70,7 @@ let { getGradeByWrongTimes } = useGetGradeByWrongTimes()
 let { nextCard } = useNextCard()
 const typingRef: any = $ref()
 let showConflictNotice = $ref(false)
+let showCollectNotice = $ref(false)
 let showConflictNotice2 = $ref(false)
 let isComplete = $ref(false)
 let loading = $ref(false)
@@ -216,10 +223,11 @@ onMounted(async () => {
   } else {
     loading = true
   }
-  if (route.query.guide) {
-    showConflictNotice = false
-  } else {
+  if (!route.query.guide) {
     showConflictNotice = true
+    setTimeout(() => {
+      showCollectNotice = true
+    }, 10000)
   }
   document.removeEventListener('visibilitychange', onvisibilitychange)
   document.addEventListener('visibilitychange', onvisibilitychange)
@@ -258,6 +266,9 @@ watchOnce(
                 setTimeout(() => {
                   showConflictNotice = true
                 }, 1500)
+                setTimeout(() => {
+                  showCollectNotice = true
+                }, 10000)
               },
             },
           ],
@@ -1098,6 +1109,7 @@ useEvents([
   </PracticeLayout>
   <Statistics v-model="isComplete" :loading="settling" />
   <ConflictNotice v-if="showConflictNotice" />
+  <CollectNotice v-model="showCollectNotice" />
   <ConflictNotice2 v-model="showConflictNotice2" />
 </template>
 

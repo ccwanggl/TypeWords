@@ -67,6 +67,7 @@ export function useInit() {
         [SyncDataType.setting]: settingData,
       })
     }
+    settingStore.load = true
     store.load = true
     console.timeEnd('init')
     initializing = false // 初始化完成，允许保存数据

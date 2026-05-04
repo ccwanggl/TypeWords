@@ -176,8 +176,7 @@ export const useSettingStore = defineStore('setting', {
                 Object.assign(result.val, res.data)
               }
             }
-
-            this.setState({ ...result.val, load: true })
+            this.setState(result.val)
             resolve(result)
           }
           resolve(null)

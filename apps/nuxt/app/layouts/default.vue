@@ -9,7 +9,7 @@ import { useRuntimeStore } from '@typewords/core/stores/runtime.ts'
 import { useSettingStore } from '@typewords/core/stores/setting.ts'
 import { ShortcutKey } from '@typewords/core/types/enum.ts'
 import { onMounted, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 import { useInit } from '@typewords/core/composables/useInit.ts'
 import { useI18n } from 'vue-i18n'
@@ -146,11 +146,16 @@ const showIcon = $computed(() => {
     <IeDialog />
 
     <div class="flex-1 z-1 relative main-content overflow-x-hidden">
-      <div class="mt-3 center relative z-9999 pointer-events-none" @click="router.push('/setting?index=6 ')" v-if="runtimeStore.isError">
+      <div
+        class="mt-3 center relative z-9999 pointer-events-none"
+        @click="router.push('/setting?index=6 ')"
+        v-if="runtimeStore.isError"
+      >
         <ToastComponent type="error" :duration="0" :shadow="false" :showClose="false" message="同步失败" />
       </div>
       <!--      <slot></slot>-->
       <router-view></router-view>
+
       <div class="absolute right-4 top-4 flex z-1 gap-2" v-if="showIcon">
         <div class="relative group">
           <BaseIcon>

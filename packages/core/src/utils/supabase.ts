@@ -24,7 +24,7 @@ export function getConfig(): SupabaseConfig | null {
     const raw = localStorage.getItem(SUPABASE_CONFIG_KEY)
     if (!raw) return null
     const c = JSON.parse(raw) as Partial<SupabaseConfig>
-    if (!c || typeof c.url !== 'string' || typeof c.key !== 'string') return null
+    if (!c || !c.url || !c.key) return null
     return {
       url: c.url,
       key: c.key,
