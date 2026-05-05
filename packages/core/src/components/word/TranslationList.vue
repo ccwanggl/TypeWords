@@ -42,7 +42,7 @@ const posList = computed<{ pos: string; totalFreq?: number; trans: { pos: string
 <template>
   <div>
     <div class="flex" v-for="pos in posList">
-      <div class="shrink-0 pos" :class="posSpace && (pos.pos ? 'w-12' : '-ml-3')">
+      <div class="shrink-0 pos" :class="posSpace && (pos.pos ? 'min-w-12' : '-ml-3')">
         {{ pos.pos }}&nbsp;
       </div>
       <div class="flex space-x-3 flex-wrap items-end">
