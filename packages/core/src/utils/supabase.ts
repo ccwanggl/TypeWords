@@ -117,7 +117,7 @@ export class Supabase {
 
   static setStatus(status: SupabaseStatus, statusMessage?: string): void {
     if (status === 'error') {
-      debugger
+      // debugger
       //如果是请求错误，则可重试3次再报错，因为会有很多误判
       if ('TypeError: Failed to fetch' === statusMessage && this.errorCount < 3) {
         this.errorCount++
