@@ -40,11 +40,13 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { wordDelete } from '@typewords/core/apis/words.ts'
 import { copyOfficialDict } from '@typewords/core/apis/dict.ts'
-import { PRACTICE_WORD_CACHE } from '@typewords/core/utils/cache.ts'
+import { getPracticeWordCacheLocal, PRACTICE_WORD_CACHE } from '@typewords/core/utils/cache.ts'
+import { flushStatToStore, usePracticeWordPersistence } from '@typewords/core/composables/usePracticePersistence'
 import { Sort, WordPracticeMode } from '@typewords/core/types/enum.ts'
 import saveAs from 'file-saver'
 
 const runtimeStore = useRuntimeStore()
+const wordPersistence = usePracticeWordPersistence()
 const base = useBaseStore()
 const router = useRouter()
 const route = useRoute()
@@ -287,15 +289,18 @@ const { nav } = useNav()
 
 //todo 可以和首页合并
 async function startPractice(query = {}) {
+  // debugger
   //这里重置一下，因为下面切换词典后，导致学习进度为0，而切换前的模式有可能需要有进度才可以用
   if (![WordPracticeMode.Free, WordPracticeMode.System].includes(settingStore.wordPracticeMode)) {
     settingStore.wordPracticeMode = WordPracticeMode.System
   }
-  // console.log(1)
-  localStorage.removeItem(PRACTICE_WORD_CACHE.key)
-  studyLoading = true
+  // 切换词典前，先将进行中的练习统计落库，避免学习记录丢失
+  const cache = await getPracticeWordCacheLocal()
+  if (cache) {
+    flushStatToStore((cache as any)?.statStoreData)
+    await wordPersistence.clear()
+  }
   await base.changeDict(runtimeStore.editDict)
-  studyLoading = false
   window.umami?.track('startStudyWord', {
     name: store.sdict.name,
     index: store.sdict.lastLearnIndex,
@@ -581,9 +586,9 @@ watch(
         buttons: [
           {
             text: `下一步（4/${TourConfig.total}）`,
-            action() {
+            action: async () => {
               tour.next()
-              startPractice({ guide: 1 })
+              await startPractice({ guide: 1 })
             },
           },
         ],
@@ -860,7 +865,7 @@ defineRender(() => {
         showLeftOption
         modelValue={showPracticeSettingDialog}
         onUpdate:modelValue={val => (showPracticeSettingDialog = val)}
-        onOk={startPractice}
+        onConfirm={startPractice}
       />
     </BasePage>
   )

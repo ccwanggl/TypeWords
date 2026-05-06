@@ -109,7 +109,6 @@ const emit = defineEmits<{
   text-underline-offset: 0.3rem;
   &:hover {
     text-decoration: underline dashed transparent;
-    color: white;
     background: var(--color-icon-hightlight);
   }
 }

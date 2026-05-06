@@ -1,6 +1,7 @@
 //@ts-ignore
 import VueVirtualScroller from 'vue-virtual-scroller'
 import { ENV } from '@typewords/core/config/env.ts'
+import { withAppBaseURL } from '@typewords/core/utils/base-url'
 
 export default defineNuxtPlugin(async nuxtApp => {
   if (
@@ -19,7 +20,7 @@ export default defineNuxtPlugin(async nuxtApp => {
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker
-        .register('/service-worker.js')
+        .register(withAppBaseURL('/service-worker.js'))
         .then(registration => {
           console.log('ServiceWorker registration successful with scope: ', registration.scope)
         })

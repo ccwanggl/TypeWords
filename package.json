@@ -27,6 +27,8 @@
     "dayjs": "^1.11.13",
     "file-saver": "^2.0.5",
     "idb-keyval": "^6.2.2",
+    "@rrweb/record": "2.0.0-alpha.20",
+    "rrweb-player": "2.0.0-alpha.20",
     "md5": "^2.2.1",
     "mitt": "^3.0.1",
     "nanoid": "^5.1.5",
@@ -42,6 +44,7 @@
   },
   "devDependencies": {
     "@alicloud/pop-core": "^1.8.0",
+    "@iconify-json/tdesign": "^1.2.14",
     "@iconify-json/bx": "^1.2.2",
     "@iconify-json/clarity": "^1.2.4",
     "@iconify-json/dinkie-icons": "^1.2.0",

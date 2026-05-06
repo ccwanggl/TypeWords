@@ -201,7 +201,7 @@ async function unmount() {
 
   console.log('onUnmounted')
   runtimeStore.disableEventListener = false
-  const cache = getPracticeArticleCacheLocal()
+  const cache = await getPracticeArticleCacheLocal()
   //如果有缓存，则更新花费的时间；因为用户不输入不会保存数据
   if (cache) {
     if (runtimeStore.globalLoading) return
@@ -279,8 +279,7 @@ async function complete() {
     articleId: Number(articleData.article.id),
     title: articleData.article.title,
     spend: statStore.spend,
-    //修正计时
-    startDate: Date.now() - statStore.spend,
+    startDate: statStore.startDate,
     total: statStore.total,
     wrong: statStore.wrong,
   }
@@ -390,7 +389,7 @@ async function changeArticle(val: ArticleItem) {
     }
   }
   initAudio()
-  lock = true
+  lock = false
 }
 
 const handlePlayNext = (nextArticle: Article) => {

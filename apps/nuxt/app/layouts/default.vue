@@ -9,10 +9,11 @@ import { useRuntimeStore } from '@typewords/core/stores/runtime.ts'
 import { useSettingStore } from '@typewords/core/stores/setting.ts'
 import { ShortcutKey } from '@typewords/core/types/enum.ts'
 import { onMounted, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 import { useInit } from '@typewords/core/composables/useInit.ts'
 import { useI18n } from 'vue-i18n'
+import { Supabase } from '@typewords/core/utils/supabase.ts'
 
 const router = useRouter()
 const { toggleTheme, getTheme, setTheme } = useTheme()
@@ -30,16 +31,6 @@ watch(() => settingStore.sideExpand, toggleExpand)
 
 //迁移数据
 let showTransfer = $ref(false)
-onMounted(() => {
-  init()
-
-  if (new URLSearchParams(window.location.search).get('from_old_site') === '1' && location.origin === Origin) {
-    if (localStorage.getItem('__migrated_from_2study_top__')) return
-    setTimeout(() => {
-      showTransfer = true
-    }, 1000)
-  }
-})
 
 watch(
   () => settingStore.load,
@@ -62,6 +53,19 @@ const route = useRoute()
 
 const showIcon = $computed(() => {
   return ['/words', '/articles', '/setting', '/help', '/doc', '/feedback'].includes(route.path)
+})
+
+onMounted(() => {
+  init()
+
+  if (new URLSearchParams(window.location.search).get('from_old_site') === '1' && location.origin === Origin) {
+    if (localStorage.getItem('__migrated_from_2study_top__')) return
+    setTimeout(() => {
+      showTransfer = true
+    }, 1000)
+  }
+
+  window.umami?.track('sync', { check: Supabase.check() })
 })
 </script>
 
@@ -146,12 +150,19 @@ const showIcon = $computed(() => {
     <IeDialog />
 
     <div class="flex-1 z-1 relative main-content overflow-x-hidden">
-      <div class="mt-3 center relative z-9999 pointer-events-none" @click="router.push('/setting?index=6 ')" v-if="runtimeStore.isError">
+      <div
+        class="mt-3 center relative z-9999 pointer-events-none"
+        @click="router.push('/setting?index=6 ')"
+        v-if="runtimeStore.isError"
+      >
         <ToastComponent type="error" :duration="0" :shadow="false" :showClose="false" message="同步失败" />
       </div>
       <!--      <slot></slot>-->
       <router-view></router-view>
+
       <div class="absolute right-4 top-4 flex z-1 gap-2" v-if="showIcon">
+        <MiniProgram v-if="settingStore.load && !settingStore.first" />
+
         <div class="relative group">
           <BaseIcon>
             <IconPhTranslate />

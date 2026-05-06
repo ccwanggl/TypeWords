@@ -1,4 +1,5 @@
 import { useBaseStore } from '../stores'
+import type { PracticeState } from '../stores/practice'
 import { PracticeData, SyncDataType, TaskWords, Word } from '../types'
 import type {
   PracticeArticleCache,
@@ -8,6 +9,68 @@ import type {
 } from '../utils/cache'
 import { getPracticeArticleCacheLocal, getPracticeWordCacheLocal } from '../utils/cache'
 import { useDataSyncPersistence } from './useDataSyncPersistence'
+import dayjs from 'dayjs'
+
+type DayGroup = { firstStart: number; totalSpend: number; daySegments: [number, number][] }
+
+/**
+ * 将进行中的练习统计（PracticeState）落库到 store.sdict.statistics。
+ * 用于切换词典或修改练习设置前调用，避免学习记录丢失。
+ * @param st - 来自缓存或内存的 PracticeState，为 null / spend=0 时直接返回
+ */
+export function flushStatToStore(st: PracticeState | null | undefined): void {
+  if (!st?.spend) return
+  const store = useBaseStore()
+
+  const baseInfo = {
+    total: st.total,
+    wrong: st.wrong,
+    new: st.newWordNumber,
+    review: st.reviewWordNumber,
+  }
+
+  if (Array.isArray(st.segments) && st.segments.length > 0) {
+    const dayMap = new Map<string, DayGroup>()
+    for (const [segStart, segEnd] of st.segments) {
+      const dayKey = dayjs(segStart).format('YYYY-MM-DD')
+      if (!dayMap.has(dayKey)) {
+        dayMap.set(dayKey, { firstStart: segStart, totalSpend: 0, daySegments: [] })
+      }
+      const group = dayMap.get(dayKey)!
+      group.totalSpend += segEnd - segStart
+      group.daySegments.push([segStart, segEnd])
+    }
+    const dayKeys = [...dayMap.keys()]
+    if (dayKeys.length === 1) {
+      store.sdict.statistics.push({
+        ...baseInfo,
+        spend: dayMap.get(dayKeys[0])!.totalSpend,
+        startDate: dayMap.get(dayKeys[0])!.firstStart,
+        segments: dayMap.get(dayKeys[0])!.daySegments,
+        sessionRole: 'single',
+      })
+    } else {
+      dayKeys.forEach((dayKey, idx) => {
+        const group = dayMap.get(dayKey)!
+        const sessionRole = idx === 0 ? 'start' : idx === dayKeys.length - 1 ? 'end' : 'middle'
+        store.sdict.statistics.push({
+          ...baseInfo,
+          spend: group.totalSpend,
+          startDate: group.firstStart,
+          segments: group.daySegments,
+          sessionRole: sessionRole as 'start' | 'middle' | 'end',
+        })
+      })
+    }
+  } else {
+    store.sdict.statistics.push({
+      ...baseInfo,
+      spend: st.spend,
+      startDate: st.startDate,
+      sessionRole: 'single',
+    })
+  }
+}
 
 function isCompactPracticeWordCache(data: PracticeWordCacheStored | null): data is PracticeWordCacheCompact {
   return !!data && 'taskWordsStr' in data
@@ -74,7 +137,7 @@ export function usePracticeWordPersistence() {
 
   async function load(): Promise<PracticeWordCache | null> {
     const res = await fetch()
-    return res ?? restorePracticeWordCache(getPracticeWordCacheLocal())
+    return res ?? restorePracticeWordCache(await getPracticeWordCacheLocal())
   }
 
   async function fetch(): Promise<PracticeWordCache | null> {
@@ -87,7 +150,7 @@ export function usePracticeWordPersistence() {
   }
 
   async function getLocalDataCompact(): Promise<PracticeWordCacheStored> {
-    return getPracticeWordCacheLocal()
+    return await getPracticeWordCacheLocal()
   }
 
   async function save(data: PracticeWordCache | null) {
@@ -107,11 +170,11 @@ export function usePracticeArticlePersistence() {
 
   async function load(): Promise<PracticeArticleCache | null> {
     const res = await fetch()
-    return res ?? getPracticeArticleCacheLocal()
+    return res ?? (await getPracticeArticleCacheLocal())
   }
 
   async function getLocalDataCompact(): Promise<PracticeArticleCache | null> {
-    return getPracticeArticleCacheLocal()
+    return await getPracticeArticleCacheLocal()
   }
 
   async function fetch(): Promise<PracticeArticleCache | null> {
@@ -128,7 +191,7 @@ export function usePracticeArticlePersistence() {
   }
 
   async function clear() {
-    await dataSync.saveLocalAndSync(SyncDataType.practice_article, null)
+    await dataSync.saveLocalAndSync(SyncDataType.practice_article, null, { pullWhenRemoteNewer: false })
   }
 
   return { load, save, clear, fetch, getLocalDataCompact }

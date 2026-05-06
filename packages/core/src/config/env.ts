@@ -47,12 +47,12 @@ export const RESOURCE_PATH = ENV.API + 'static'
 
 export const DICT_LIST = {
   WORD: {
-    ALL: `/list/word.json`,
-    RECOMMENDED: `/list/recommend_word.json`,
+    ALL: ENV.RESOURCE_URL + `/list/word.json`,
+    RECOMMENDED: ENV.RESOURCE_URL + `/list/recommend_word.json`,
   },
   ARTICLE: {
-    ALL: `/list/article.json`,
-    RECOMMENDED: `/list/recommend_article.json`,
+    ALL: ENV.RESOURCE_URL + `/list/article.json`,
+    RECOMMENDED: ENV.RESOURCE_URL + `/list/recommend_article.json`,
   },
 }
 
@@ -71,13 +71,9 @@ export const SAVE_DICT_KEY = {
   key: 'typing-word-dict',
   version: 4,
 }
-//18版本，移除单独保存的 app version字段，转移到 settingStore的webAppVersion里面
-//19:修复快捷键下一个单词和跳过单词重复了
-//20:修复19版本未导入变量，导致抛错所有用户setting变默认值的bug
-//21:修复快捷键下一个单词和跳过单词重复了
 export const SAVE_SETTING_KEY = {
   key: 'typing-word-setting',
-  version: 21,
+  version: 22,
 }
 
 //5版本，不再单独保存 app version字段

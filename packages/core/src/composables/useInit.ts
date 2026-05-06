@@ -6,6 +6,8 @@ import { Supabase } from '../utils/supabase'
 import { ensureHashGuardBeforeInit, useDataSyncPersistence } from './useDataSyncPersistence'
 import { SyncDataType } from '../types'
 import { SubscriptionCallbackMutation } from 'pinia'
+import { onUnmounted } from 'vue'
+// import { startRrwebRecording } from './useRrweb'
 
 let unsub = null
 let unsub2 = null
@@ -14,29 +16,28 @@ export function useInit() {
   const store = useBaseStore()
   const settingStore = useSettingStore()
   const runtimeStore = useRuntimeStore()
-  const userStore = useUserStore()
+  // const userStore = useUserStore()
   const dataSync = useDataSyncPersistence()
   let initializing = false // 标记是否正在初始化
   let focus = true
   let fetching = false
+  let fetching2 = false
+  let restoreFetching = false
 
   const onvisibilitychange = async () => {
-    //如果标签页失活了就不保存数据了
-    if (document.hidden) {
-      focus = false
-    } else {
+    focus = !document.hidden
+    if (focus) {
       try {
-        focus = true
         //当激活时，要先获取数据，以保证本地是最新的，以免本地老数据上传到后端覆盖新数据
-        if (fetching) return
-        fetching = true
+        if (restoreFetching) return
+        restoreFetching = true
         await dataSync.syncData(
           { [SyncDataType.dict]: null, [SyncDataType.setting]: null },
           //只拉不推送
           { pushWhenLocalNewer: false }
         )
       } finally {
-        fetching = false
+        restoreFetching = false
       }
     }
   }
@@ -57,7 +58,7 @@ export function useInit() {
     document.removeEventListener('visibilitychange', onvisibilitychange)
 
     await ensureHashGuardBeforeInit()
-    await userStore.init()
+    // await userStore.init()
     let dictData = await store.init()
     let settingData = await settingStore.init()
     if (dictData && settingData) {
@@ -66,6 +67,7 @@ export function useInit() {
         [SyncDataType.setting]: settingData,
       })
     }
+    settingStore.load = true
     store.load = true
     console.timeEnd('init')
     initializing = false // 初始化完成，允许保存数据
@@ -75,7 +77,7 @@ export function useInit() {
     //用 $subscribe 替代 watch
     unsub = store.$subscribe(
       debounce(async (mutation, data: BaseState) => {
-        if (fetching || !focus || runtimeStore.globalLoading) return
+        if (fetching || !focus || runtimeStore.globalLoading || restoreFetching) return
         if (data._ignoreWatch) {
           data._ignoreWatch = false
           return
@@ -95,7 +97,8 @@ export function useInit() {
 
     unsub2 = settingStore.$subscribe(
       debounce(async (mutation: SubscriptionCallbackMutation<SettingState>, data: SettingState) => {
-        if (fetching || !focus || runtimeStore.globalLoading) return
+        if (fetching2 || !focus || runtimeStore.globalLoading || restoreFetching) return
+        console.log('settingStore.$subscribe', mutation, data, data._ignoreWatch)
         if (data._ignoreWatch) {
           data._ignoreWatch = false
           return
@@ -103,12 +106,11 @@ export function useInit() {
         if (mutation.type === 'direct' && mutation.events?.key === '_ignoreWatch') {
           return
         }
-        console.log('settingStore.$subscribe', mutation, data, data._ignoreWatch)
-        fetching = true
+        fetching2 = true
         try {
           await dataSync.saveLocalAndSync(SyncDataType.setting, data)
         } finally {
-          fetching = false
+          fetching2 = false
         }
         if (AppEnv.CAN_REQUEST) {
           syncSetting(null, settingStore.$state)
@@ -119,6 +121,9 @@ export function useInit() {
     runtimeStore.isNew = APP_VERSION.version > Number(settingStore.webAppVersion)
     runtimeStore.isError = Supabase.getStatus().status === 'error'
     window.umami?.track('host', { host: window.location.host })
+
+    // 静默后台录制用户操作，数据保存到 IndexedDB
+    // startRrwebRecording().catch(console.error)
   }
 
   return init

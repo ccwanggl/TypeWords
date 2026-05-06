@@ -14,8 +14,9 @@ const runtimeStore = useRuntimeStore()
 
 const model = defineModel()
 
-defineProps<{
+const props = defineProps<{
   showLeftOption: boolean
+  onConfirm?: () => Promise<void | boolean>
 }>()
 
 const emit = defineEmits<{
@@ -27,11 +28,11 @@ let tempPerDayStudyNumber = $ref(0)
 let tempWordReviewRatio = $ref(0)
 let tempLastLearnIndex = $ref(0)
 
-function changePerDayStudyNumber() {
+async function changePerDayStudyNumber() {
   runtimeStore.editDict.perDayStudyNumber = Number(tempPerDayStudyNumber)
   runtimeStore.editDict.lastLearnIndex = Number(tempLastLearnIndex)
   settings.wordReviewRatio = tempWordReviewRatio
-  emit('ok')
+  return props?.onConfirm?.()
 }
 
 watch(
@@ -51,7 +52,14 @@ watch(
 </script>
 
 <template>
-  <Dialog v-model="model" :title="$t('learning_settings')" padding :footer="true" @ok="changePerDayStudyNumber">
+  <Dialog
+    v-model="model"
+    :title="$t('learning_settings')"
+    padding
+    :footer="true"
+    :onConfirm="changePerDayStudyNumber"
+    @ok="emit('ok')"
+  >
     <div class="target-modal color-main" id="mode">
       <div class="text-center mt-4">
         <span
@@ -79,7 +87,7 @@ watch(
         <span>{{ $t('new_words_count2') }}</span>
         <span>，最多复习</span>
         <div class="target-number mx-2">
-          {{ (tempPerDayStudyNumber * tempWordReviewRatio) || '-'}}
+          {{ tempPerDayStudyNumber * tempWordReviewRatio || '-' }}
         </div>
         <span>{{ $t('words') }}</span>
       </div>

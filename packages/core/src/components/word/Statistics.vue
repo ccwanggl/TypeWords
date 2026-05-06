@@ -147,7 +147,7 @@ const encouragementText = $computed(() => {
                 class="bg-[var(--bg-card-secend)] py-1 px-2 rounded-md"
                 v-for="item in Object.entries(practiceData.wrongTimesMap)
                   .sort((a, b) => b[1] - a[1])
-                  .slice(0, 20)"
+                  .slice(0, 10)"
               >
                 {{ item[0] }}
                 {{ item[1] }}次

@@ -52,7 +52,7 @@ import dayjs from 'dayjs'
 import prefixTxt from './template-vue-prefix.txt?raw'
 import suffixTxt from './template-vue-suffix.txt?raw'
 import TypeWord from '@/z-polyfill/TypeWord.vue'
-import PracticeLayout from '@/z-polyfill/PracticeLayout.vue'
+import PracticeLayout from '@typewords/core/components/PracticeLayout.vue'
 
 const { toggleWordCollect, isWordSimple, toggleWordSimple } = useWordOptions()
 const settingStore = useSettingStore()
@@ -252,7 +252,6 @@ watchOnce(
         tour.addStep({
           id: 'step5',
           text: '这里可以练习拼写单词，只需要按下键盘上对应的按键即可，没有输入框！',
-          attachTo: { element: '#word', on: 'bottom' },
           buttons: [
             {
               text: `关闭`,

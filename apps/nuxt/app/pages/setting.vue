@@ -86,6 +86,7 @@ const dataSyncPersistence = useDataSyncPersistence()
 
 const config = useRuntimeConfig()
 const gitLastCommitHash = ref(config?.public?.latestCommitHash)
+const gitLastCommitTime = ref(config?.public?.latestCommitTime)
 
 let editShortcutKey = $ref('')
 
@@ -439,13 +440,10 @@ function transferOk() {
   }, 1500)
 }
 
-function clearAllData() {
-  let d = getDefaultBaseState()
-  d.load = true
-  store.setState(d)
-  let d1 = getDefaultSettingState()
-  d1.load = true
-  settingStore.setState(d1)
+async function clearAllData() {
+  await dataSyncPersistence.clear()
+  Supabase.removeConfig()
+  Toast.success('清除成功')
 }
 
 let sbFormRef = $ref<FormType>()
@@ -769,7 +767,7 @@ function removeSbConfig() {
 
           <div v-if="tabIndex === 9" class="center flex-col">
             <About />
-            <div class="text-md color-gray mt-10">Build {{ gitLastCommitHash }}</div>
+            <div class="text-md color-gray mt-10">Build {{ gitLastCommitHash }} {{gitLastCommitTime}}</div>
           </div>
         </div>
       </div>
@@ -810,9 +808,9 @@ function removeSbConfig() {
       <div v-if="!historyBackups.length" class="color-gray">暂无历史数据</div>
       <div v-else class="flex flex-col gap-3">
         <div>这里是每次 {{ APP_NAME }} 更新后/报错后自动保存的用户数据，如果您的数据被损坏，您可在此尝试恢复</div>
-        <div v-for="item in historyBackups" :key="item.key" class="border rounded-md flex justify-between">
+        <div v-for="(item,i) in historyBackups" :key="item.key" class="border rounded-md flex justify-between">
           <div>
-            <div class="">版本号：{{ item.hash }}</div>
+            <div class="">{{ i+1 }}. 版本号：{{ item.hash }}</div>
             <div class="color-gray">自动备份时间：{{ formatHistoryTime(item.createdAt) }}</div>
           </div>
           <div class="mt-2">

@@ -8,16 +8,50 @@ import { execSync } from 'child_process'
 import { defineNuxtConfig } from 'nuxt/config'
 
 let latestCommitHash = ''
+let latestCommitTime = ''
 try {
   latestCommitHash = execSync('git rev-parse --short HEAD').toString().trim()
+  latestCommitTime = execSync('git log -1 --format=%ci').toString().trim()
 } catch (e) {
   latestCommitHash = 'unknown'
+  latestCommitTime = 'unknown'
 }
+
+const siteOrigin = (process.env.ORIGIN || 'https://typewords.cc').replace(/\/$/, '')
+
+function normalizeBaseURL(baseURL: string = '/') {
+  if (!baseURL) return '/'
+
+  let normalizedBaseURL = baseURL.trim()
+
+  if (!normalizedBaseURL.startsWith('/')) {
+    normalizedBaseURL = `/${normalizedBaseURL}`
+  }
+  if (!normalizedBaseURL.endsWith('/')) {
+    normalizedBaseURL = `${normalizedBaseURL}/`
+  }
+
+  return normalizedBaseURL.replace(/\/{2,}/g, '/')
+}
+
+function withBaseURL(path: string, baseURL: string) {
+  if (!path.startsWith('/')) return path
+  if (baseURL === '/') return path
+  if (path === '/') return baseURL
+  return `${baseURL.slice(0, -1)}${path}`
+}
+
+function toSiteURL(path: string, baseURL: string) {
+  return new URL(withBaseURL(path, baseURL), siteOrigin).toString()
+}
+
+const appBaseURL = normalizeBaseURL(process.env.NUXT_APP_BASE_URL || '/')
 
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   app: {
+    baseURL: appBaseURL,
     // keepalive: true,
     head: {
       title: 'Type Words 官网 - 词文记 | 单词跟打 · 文章跟打 · 电脑上背单词', // default fallback title
@@ -90,6 +124,7 @@ export default defineNuxtConfig({
     '/words': { ssr: false },
     '/articles': { ssr: false },
     '/setting': { ssr: false },
+    '/rrweb': { ssr: false },
     '/book/nce1': { prerender: true },
     '/book/nce2': { prerender: true },
     '/book/nce3': { prerender: true },
@@ -155,6 +190,7 @@ export default defineNuxtConfig({
       origin: process.env.ORIGIN || 'https://typewords.cc',
       host: process.env.HOST || 'typewords.cc',
       latestCommitHash: latestCommitHash + (process.env.NODE_ENV === 'production' ? '' : ' (dev)'),
+      latestCommitTime: latestCommitTime,
     },
   },
   // 构建配置
@@ -180,6 +216,9 @@ export default defineNuxtConfig({
     port: 5567,
   },
   nitro: {
+    prerender: {
+      ignore: appBaseURL === '/' ? [] : [withBaseURL('/manifest.json', appBaseURL)],
+    },
     devProxy: {
       '/baidu': {
         target: 'https://api.fanyi.baidu.com/api/trans/vip/translate',

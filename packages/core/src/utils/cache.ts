@@ -1,5 +1,6 @@
 import type { PracticeData, TaskWords } from '../types'
 import type { PracticeState } from '../stores'
+import { get, set } from 'idb-keyval'
 
 type CacheConfig = { key: string; version: number }
 
@@ -47,52 +48,80 @@ export type PracticeArticleCache = {
 
 export type LocalCacheResult<T> = { val: T; updated_at?: string; version: number }
 
-function getLocal<T>(config: CacheConfig): T | null {
-  const result = getLocalWithMeta<T>(config)
-  return result?.val ?? null
-}
-
-/** 返回带 updated_at 的本地缓存，供同步时比较时间戳用；无数据或解析失败返回 null */
-function getLocalWithMeta<T>(config: CacheConfig): LocalCacheResult<T> | null {
-  const d = localStorage.getItem(config.key)
-  if (!d) return null
+/**
+ * 尝试从 localStorage 迁移老数据到 IndexedDB。
+ * 如果 idb 中无数据，但 localStorage 中有，则迁移并删除 localStorage 中的 key。
+ * 老数据是 JSON 字符串格式，迁移时解析为对象再存入 idb。
+ */
+async function migrateFromLocalStorage<T>(config: CacheConfig): Promise<LocalCacheResult<T> | null> {
   try {
-    return JSON.parse(d)
-  } catch {
+    const raw = localStorage.getItem(config.key)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as LocalCacheResult<T>
+    // 迁移到 idb
+    await set(config.key, raw)
+    // 删除 localStorage 中的老数据
     localStorage.removeItem(config.key)
+    console.log(`[cache] migrated ${config.key} from localStorage to idb`)
+    return parsed
+  } catch {
     return null
   }
 }
 
-function setLocal<T>(config: CacheConfig, val: T | null, updated_at: string): void {
-  const payload: { version: number; val: T; updated_at?: string } = {
+/** 从 idb 读取带 meta 的缓存；无数据或解析失败返回 null */
+async function getLocalWithMeta<T>(config: CacheConfig): Promise<LocalCacheResult<T> | null> {
+  const raw = await get(config.key)
+  if (raw) {
+    // 兼容旧版本写入的 JSON 字符串格式
+    if (typeof raw === 'string') {
+      try {
+        return JSON.parse(raw) as LocalCacheResult<T>
+      } catch {
+        return null
+      }
+    }
+    return raw as LocalCacheResult<T>
+  }
+  // idb 中没有数据，尝试从 localStorage 迁移（兼容老数据）
+  return migrateFromLocalStorage<T>(config)
+}
+
+async function getLocal<T>(config: CacheConfig): Promise<T | null> {
+  const result = await getLocalWithMeta<T>(config)
+  return result?.val ?? null
+}
+
+async function setLocal<T>(config: CacheConfig, val: T | null, updated_at: string): Promise<void> {
+  // idb 原生支持对象存储，直接存对象，无需 JSON.stringify
+  const payload: LocalCacheResult<T> = {
     version: config.version,
     val,
     updated_at,
   }
-  localStorage.setItem(config.key, JSON.stringify(payload))
+  await set(config.key, JSON.stringify(payload))
 }
 
-export function getPracticeWordCacheLocal(): PracticeWordCacheStored | null {
+export async function getPracticeWordCacheLocal(): Promise<PracticeWordCacheStored | null> {
   return getLocal<PracticeWordCacheStored>(PRACTICE_WORD_CACHE)
 }
 
-export function getPracticeWordCacheLocalWithMeta(): LocalCacheResult<PracticeWordCacheStored> | null {
+export async function getPracticeWordCacheLocalWithMeta(): Promise<LocalCacheResult<PracticeWordCacheStored> | null> {
   return getLocalWithMeta<PracticeWordCacheStored>(PRACTICE_WORD_CACHE)
 }
 
-export function setPracticeWordCacheLocal(cache: PracticeWordCacheStored | null, updated_at?: string): void {
-  setLocal(PRACTICE_WORD_CACHE, cache, updated_at)
+export async function setPracticeWordCacheLocal(cache: PracticeWordCacheStored | null, updated_at?: string): Promise<void> {
+  await setLocal(PRACTICE_WORD_CACHE, cache, updated_at)
 }
 
-export function getPracticeArticleCacheLocal(): PracticeArticleCache | null {
+export async function getPracticeArticleCacheLocal(): Promise<PracticeArticleCache | null> {
   return getLocal<PracticeArticleCache>(PRACTICE_ARTICLE_CACHE)
 }
 
-export function getPracticeArticleCacheLocalWithMeta(): LocalCacheResult<PracticeArticleCache> | null {
+export async function getPracticeArticleCacheLocalWithMeta(): Promise<LocalCacheResult<PracticeArticleCache> | null> {
   return getLocalWithMeta<PracticeArticleCache>(PRACTICE_ARTICLE_CACHE)
 }
 
-export function setPracticeArticleCacheLocal(cache: PracticeArticleCache | null, updated_at?: string): void {
-  setLocal(PRACTICE_ARTICLE_CACHE, cache, updated_at)
+export async function setPracticeArticleCacheLocal(cache: PracticeArticleCache | null, updated_at?: string): Promise<void> {
+  await setLocal(PRACTICE_ARTICLE_CACHE, cache, updated_at)
 }

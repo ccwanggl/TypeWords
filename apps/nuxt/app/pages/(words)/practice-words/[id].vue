@@ -41,13 +41,20 @@ import { addStat, setUserDictProp } from '@typewords/core/apis'
 import GroupList from '@typewords/core/components/word/GroupList.vue'
 import { getPracticeWordCacheLocal } from '@typewords/core/utils/cache.ts'
 import { useDataSyncPersistence } from '@typewords/core/composables/useDataSyncPersistence.ts'
-import { usePracticeWordPersistence } from '@typewords/core/composables/usePracticePersistence.ts'
-import { ShortcutKey, WordPracticeMode, WordPracticeStage, WordPracticeType } from '@typewords/core/types/enum.ts'
+import { flushStatToStore, usePracticeWordPersistence } from '@typewords/core/composables/usePracticePersistence.ts'
+import {
+  IdentifyMethod,
+  ShortcutKey,
+  WordPracticeMode,
+  WordPracticeStage,
+  WordPracticeType,
+} from '@typewords/core/types/enum.ts'
 import ConflictNotice2 from '@typewords/core/components/dialog/ConflictNotice2.vue'
 import { createEmptyCard, Rating } from 'ts-fsrs'
 import { useGetGradeByWrongTimes, useNextCard } from '@typewords/core/hooks/fsrs.ts'
 import WordMarkPickList, { type WordMarkPickResult } from '@typewords/core/components/word/WordMarkPickList.vue'
 import { buildQuestion } from '@typewords/core/utils/word-test.ts'
+import CollectNotice from '@typewords/core/components/dialog/CollectNotice.vue'
 
 const { toggleWordCollect, isWordSimple, toggleWordSimple } = useWordOptions()
 const settingStore = useSettingStore()
@@ -63,6 +70,7 @@ let { getGradeByWrongTimes } = useGetGradeByWrongTimes()
 let { nextCard } = useNextCard()
 const typingRef: any = $ref()
 let showConflictNotice = $ref(false)
+let showCollectNotice = $ref(false)
 let showConflictNotice2 = $ref(false)
 let isComplete = $ref(false)
 let loading = $ref(false)
@@ -193,6 +201,12 @@ const onvisibilitychange = async () => {
         taskWords = Object.assign(taskWords, d.taskWords)
         data = Object.assign(data, d.practiceData)
         statStore.$patch(d.statStoreData)
+        // 恢复缓存后，若计时状态为"未暂停"，需重新开启一个新片段
+        // 因为上次保存到现在有时间间隔，不能续在旧片段上
+        if (!statStore.timerPaused) {
+          const now = Date.now()
+          statStore.segments.push([now, now])
+        }
       }
     } finally {
       runtimeStore.globalLoading = false
@@ -209,10 +223,11 @@ onMounted(async () => {
   } else {
     loading = true
   }
-  if (route.query.guide) {
-    showConflictNotice = false
-  } else {
+  if (!route.query.guide) {
     showConflictNotice = true
+    setTimeout(() => {
+      showCollectNotice = true
+    }, 10000)
   }
   document.removeEventListener('visibilitychange', onvisibilitychange)
   document.addEventListener('visibilitychange', onvisibilitychange)
@@ -224,7 +239,7 @@ onUnmounted(() => {
     savePracticeDataIns('onUnmounted')
   }
   timer && clearInterval(timer)
-  watchRefList.map(v => v.stop())
+  watchRefList.map(v => v?.stop())
 })
 
 watchOnce(
@@ -251,6 +266,9 @@ watchOnce(
                 setTimeout(() => {
                   showConflictNotice = true
                 }, 1500)
+                setTimeout(() => {
+                  showCollectNotice = true
+                }, 10000)
               },
             },
           ],
@@ -289,6 +307,12 @@ async function initData(initVal?: TaskWords, init: boolean = false) {
     //这里直接赋值的话，provide后的inject获取不到最新值
     data = getDefaultPracticeData(data, d.practiceData)
     statStore.$patch(d.statStoreData)
+    // 恢复缓存后，若计时状态为"未暂停"，需重新开启一个新片段
+    // 因为上次保存到现在有时间间隔，不能续在旧片段上
+    if (!statStore.timerPaused) {
+      const now = Date.now()
+      statStore.segments.push([now, now])
+    }
   } else {
     console.log('initData')
     // taskWords = initVal
@@ -342,7 +366,8 @@ async function initData(initVal?: TaskWords, init: boolean = false) {
     statStore.inputWordNumber = 0
     statStore.wrong = 0
     statStore.spend = 0
-    statStore.resumeTimer()
+    statStore.segments = []
+    statStore.resumeTimer() // 同时 push 第一条片段 [now, now]
     watchStage(statStore.stage)
     watchPracticeType(settingStore.wordPracticeType)
   }
@@ -491,16 +516,13 @@ async function complete() {
       }
     }
 
-    let statistics = {
-      spend: statStore.spend,
-      //不需要修正计时，startDate+spend!=Date.now()对不止是正常的，因为会暂停
-      startDate: statStore.startDate,
-      total: statStore.total,
-      wrong: statStore.wrong,
-      new: statStore.newWordNumber,
-      review: statStore.reviewWordNumber,
+    // 结算前先将最后一条片段的 end 定格为当前时刻（segments 已是最新，无需临时快照）
+    if (!statStore.timerPaused && statStore.segments.length > 0) {
+      statStore.segments[statStore.segments.length - 1][1] = Date.now()
     }
-    store.sdict.statistics.push(statistics)
+
+    // 按自然日对 segments 分组，每天生成一条 Statistics 记录，落库到 store.sdict.statistics
+    flushStatToStore(statStore.$state)
 
     for (const [word, wrongTimes] of Object.entries(data.wrongTimesMap)) {
       let rating = data.ratingMap[word]
@@ -739,6 +761,10 @@ async function savePracticeDataIns(where?) {
   // console.log('savePracticeData', where)
   if (runtimeStore.globalLoading) return
   runtimeStore.globalLoading = true
+  // 若计时未暂停，将最后一条片段的 end 更新为当前时刻，确保保存内容最新
+  if (!statStore.timerPaused && statStore.segments.length > 0) {
+    statStore.segments[statStore.segments.length - 1][1] = Date.now()
+  }
   await wordPersistence.save({
     taskWords,
     practiceData: data,
@@ -982,13 +1008,13 @@ useEvents([
           v-if="
             settingStore.wordPracticeType === WordPracticeType.Identify &&
             data.wrongWords.length === 0 &&
-            settingStore.quickIdentify
+            settingStore.identifyMethod === IdentifyMethod.QuickIdentify
           "
           :words="data.words"
           @complete="onWordMarkPickComplete"
         />
 
-        <div class="mb-50" v-else>
+        <div class="mb-50 w-full" v-else>
           <!--        前后单词-->
           <div
             class="fixed z-1 top-4 w-full"
@@ -1083,6 +1109,7 @@ useEvents([
   </PracticeLayout>
   <Statistics v-model="isComplete" :loading="settling" />
   <ConflictNotice v-if="showConflictNotice" />
+  <CollectNotice v-model="showCollectNotice" />
   <ConflictNotice2 v-model="showConflictNotice2" />
 </template>
 

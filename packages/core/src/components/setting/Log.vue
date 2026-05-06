@@ -1,13 +1,37 @@
 <script setup lang="ts">
 let logList = [
   {
+    date: '2026/05/06',
+    content: '添加小程序地址',
+  },
+  {
+    date: '2026/05/05',
+    content: '添加引导收藏地址小提示',
+  },
+  {
+    date: '2026/04/28',
+    content: '修复无法匹配中文符号的问题',
+  },
+  {
+    date: '2026/04/27',
+    content: '支持子目录部署',
+  },
+  {
+    date: '2026/04/26',
+    content: '支持带词频的词典 https://github.com/zyronon/TypeWords/pull/257',
+  },
+  {
+    date: '2026/04/23',
+    content: '修复切换词典/修改练习时，丢失暂存的练习数据',
+  },
+  {
     date: '2026/04/21',
     content: '新增 TTS 音色选项',
-  }, 
+  },
   {
     date: '2026/04/14',
     content: '新首页',
-  }, 
+  },
   {
     date: '2026/04/05',
     content: '新增时间暂停功能',

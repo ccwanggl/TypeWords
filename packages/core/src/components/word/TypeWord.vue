@@ -2,16 +2,25 @@
 import type { Question, Word } from '../../types'
 import { getDefaultWord, IdentifyMethod, ShortcutKey, WordPracticeType } from '../../types'
 import { useBaseStore, useSettingStore } from '../../stores'
-import { getBrowserKey, usePlayBeep, usePlayCorrect, usePlayKeyboardAudio, usePlayWordAudio, useTTsPlayAudio } from '../../hooks/sound'
+import {
+  getBrowserKey,
+  usePlayBeep,
+  usePlayCorrect,
+  usePlayKeyboardAudio,
+  usePlayWordAudio,
+  useTTsPlayAudio,
+} from '../../hooks/sound'
 import { emitter, EventKey, useEventsByWatch } from '../../utils/eventBus'
 import { onMounted, onUnmounted, watch } from 'vue'
 import SentenceHightLightWord from './SentenceHightLightWord.vue'
-import { _nextTick, last, normalizeWord } from '../../utils'
+import { _nextTick, last, normalizeWord, useNav } from '../../utils'
 import { BaseButton, BaseIcon, Toast, ToastComponent, Tooltip, VolumeIcon } from '@typewords/base'
 import Space from '../article/Space.vue'
 import { useI18n } from 'vue-i18n'
 import { useWordOptions } from '../../hooks/dict.ts'
 import { ref } from 'vue'
+import TranslationList from './TranslationList.vue'
+import { useRouter } from 'vue-router'
 
 const { t: $t } = useI18n()
 
@@ -50,6 +59,7 @@ let cursor = $ref({
 })
 const settingStore = useSettingStore()
 const store = useBaseStore()
+const router = useRouter()
 
 const playBeep = usePlayBeep()
 const playCorrect = usePlayCorrect()
@@ -65,7 +75,16 @@ function playTtsWithGuide(text: string) {
     const hasVoice = settingStore.ttsVoiceMap?.some(v => v.key === browserKey && v.voice)
     if (!hasVoice) {
       ttsVoiceHintShown = true
-      Toast.warning('例句默认使用浏览器内置 TTS 发音，若无声请前往「设置 → 音效设置 → TTS 声色」选择可用声色', { duration: 15000 })
+      let ins = Toast.warning('例句默认使用浏览器内置 TTS 发音，若无声请前往「设置 → 音效设置 → TTS 声色」选择可用声色', {
+        duration: 15000000,
+        action: {
+          text: '设置',
+          onClick: () => {
+            router.push('/setting?index=4')
+            ins.close()
+          },
+        },
+      })
     }
   }
   ttsPlayAudio(text)
@@ -771,18 +790,13 @@ const isCollect = $computed(() => isWordCollect(props.word))
         </BaseButton>
       </div>
 
-      <div v-if="isWordTest && !showWordResult" class="flex gap-8 flex-col mt-16 mb-8 w-full">
+      <div v-if="isWordTest && !showWordResult" class="flex gap-8 flex-col my-8 w-full">
         <div
           v-for="(value, index) in question?.candidates ?? []"
           class="flex gap-2 min-h-20"
           :class="{
-            'text-green-600':
-              completeSelect &&
-              index === props?.question?.correctIndex,
-            'text-red-600':
-              completeSelect &&
-              index !== props?.question?.correctIndex &&
-              index === selectIndex,
+            'text-green-600': completeSelect && index === props?.question?.correctIndex,
+            'text-red-600': completeSelect && index !== props?.question?.correctIndex && index === selectIndex,
           }"
         >
           <BaseButton
@@ -792,10 +806,10 @@ const isCollect = $computed(() => isWordCollect(props.word))
             {{ ['A', 'B', 'C', 'D'][index] }}
           </BaseButton>
           <span class="ml-2">
-            <div class="min-h-10" :class="{ 'word-shadow': !showAllCandidates && !completeSelect }">
-              {{ value.word }}
+            <div class="min-h-10 text-2xl" :class="{ 'word-shadow': !showAllCandidates && !completeSelect }">
+              {{ value.word.word }}
             </div>
-            <div>{{ value.label }}</div>
+            <TranslationList :word="value.word" :showFull="showAllCandidates || completeSelect" />
           </span>
         </div>
       </div>
@@ -818,13 +832,7 @@ const isCollect = $computed(() => isWordCollect(props.word))
           fontSize: settingStore.fontSize.wordTranslateFontSize + 'px',
         }"
       >
-        <div class="flex" v-for="v in word.trans">
-          <div class="shrink-0" :class="v.pos ? 'w-12' : '-ml-3'">
-            {{ v.pos }}
-          </div>
-          <span v-if="!settingStore.dictation || showWordResult || showFullWord">{{ v.cn }}</span>
-          <SentenceHightLightWord v-else :text="v.cn" :word="word.word" :dictation="true" :high-light="false" />
-        </div>
+        <TranslationList :word="word" :showFull="!settingStore.dictation || showWordResult || showFullWord" />
       </div>
     </div>
 
@@ -1054,8 +1062,7 @@ const isCollect = $computed(() => isWordCollect(props.word))
       margin: 0.5rem 0;
     }
 
-    .phonetic,
-    .translate {
+    .phonetic {
       font-size: 1rem;
     }
 

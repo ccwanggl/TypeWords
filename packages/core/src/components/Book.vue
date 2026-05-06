@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Dict } from '../types'
 import { Checkbox, Progress } from '@typewords/base'
+import { withAppBaseURL } from '../utils/base-url'
 
 interface IProps {
   item?: Partial<Dict>
@@ -29,12 +30,16 @@ const studyProgress = $computed(() => {
   if (!props.showProgress) return
   return props.item?.lastLearnIndex ? props.item?.lastLearnIndex + '/' : ''
 })
+
+const coverSrc = $computed(() => {
+  return props.item?.cover ? withAppBaseURL(props.item.cover) : ''
+})
 </script>
 
 <template>
   <div :id="item?.id" v-if="!isAdd">
     <div class="book overflow-hidden relative">
-      <img class="absolute top-0 left-0 w-full object-cover" v-if="item?.cover" :src="item.cover" alt="" />
+      <img class="absolute top-0 left-0 w-full object-cover" v-if="item?.cover" :src="coverSrc" alt="" />
       <div class="text-base mt-1" v-else>{{ item?.name }}</div>
       <div class="absolute bottom-4 right-3 z-1" :class="item?.cover && 'color-white'">
         <div>{{ studyProgress }}{{ item?.length }}{{ quantifier }}</div>
