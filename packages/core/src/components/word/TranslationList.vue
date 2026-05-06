@@ -45,7 +45,7 @@ const posList = computed<{ pos: string; totalFreq?: number; trans: { pos: string
       <div class="shrink-0 pos" :class="posSpace && (pos.pos ? 'min-w-12' : '-ml-3')">
         {{ pos.pos }}&nbsp;
       </div>
-      <div class="flex space-x-3 flex-wrap items-end">
+      <div class="flex gap-3 flex-wrap items-end">
         <span v-for="tran in pos.trans">
           <span v-if="tran.frequency != undefined" :class="['rare', 'uncommon', 'common'][tran.frequency]">{{
             tran.cn
