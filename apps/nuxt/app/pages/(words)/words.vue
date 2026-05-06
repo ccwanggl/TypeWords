@@ -168,8 +168,8 @@ async function init() {
   loading = false
 }
 
-function startPractice(practiceMode: WordPracticeMode, resetCache: boolean = false): void {
-  if (resetCache) resetCacheData()
+async function startPractice(practiceMode: WordPracticeMode, resetCache: boolean = false): void {
+  if (resetCache) await resetCacheData()
 
   if (shouldShowDialogPracticeMode.includes(practiceMode) && !isSaveData) {
     editingWordPracticeMode = practiceMode
@@ -466,7 +466,6 @@ let isOldHost = $ref(false)
 onMounted(() => {
   isOldHost = window.location.host === Old_Host
 })
-
 
 onUnmounted(() => {
   document.removeEventListener('visibilitychange', onvisibilitychange)
