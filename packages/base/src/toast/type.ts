@@ -1,10 +1,16 @@
 export type ToastType = 'success' | 'warning' | 'info' | 'error'
 
+export interface ToastAction {
+  text: string
+  onClick?: () => void
+}
+
 export interface ToastOptions {
   message: string
   type?: ToastType
   duration?: number
   showClose?: boolean
+  action?: ToastAction
 }
 
 export interface ToastInstance {

@@ -2,17 +2,25 @@
 import type { Question, Word } from '../../types'
 import { getDefaultWord, IdentifyMethod, ShortcutKey, WordPracticeType } from '../../types'
 import { useBaseStore, useSettingStore } from '../../stores'
-import { getBrowserKey, usePlayBeep, usePlayCorrect, usePlayKeyboardAudio, usePlayWordAudio, useTTsPlayAudio } from '../../hooks/sound'
+import {
+  getBrowserKey,
+  usePlayBeep,
+  usePlayCorrect,
+  usePlayKeyboardAudio,
+  usePlayWordAudio,
+  useTTsPlayAudio,
+} from '../../hooks/sound'
 import { emitter, EventKey, useEventsByWatch } from '../../utils/eventBus'
 import { onMounted, onUnmounted, watch } from 'vue'
 import SentenceHightLightWord from './SentenceHightLightWord.vue'
-import { _nextTick, last, normalizeWord } from '../../utils'
+import { _nextTick, last, normalizeWord, useNav } from '../../utils'
 import { BaseButton, BaseIcon, Toast, ToastComponent, Tooltip, VolumeIcon } from '@typewords/base'
 import Space from '../article/Space.vue'
 import { useI18n } from 'vue-i18n'
 import { useWordOptions } from '../../hooks/dict.ts'
 import { ref } from 'vue'
 import TranslationList from './TranslationList.vue'
+import { useRouter } from 'vue-router'
 
 const { t: $t } = useI18n()
 
@@ -51,6 +59,7 @@ let cursor = $ref({
 })
 const settingStore = useSettingStore()
 const store = useBaseStore()
+const router = useRouter()
 
 const playBeep = usePlayBeep()
 const playCorrect = usePlayCorrect()
@@ -66,7 +75,16 @@ function playTtsWithGuide(text: string) {
     const hasVoice = settingStore.ttsVoiceMap?.some(v => v.key === browserKey && v.voice)
     if (!hasVoice) {
       ttsVoiceHintShown = true
-      Toast.warning('例句默认使用浏览器内置 TTS 发音，若无声请前往「设置 → 音效设置 → TTS 声色」选择可用声色', { duration: 15000 })
+      let ins = Toast.warning('例句默认使用浏览器内置 TTS 发音，若无声请前往「设置 → 音效设置 → TTS 声色」选择可用声色', {
+        duration: 15000000,
+        action: {
+          text: '设置',
+          onClick: () => {
+            router.push('/setting?index=4')
+            ins.close()
+          },
+        },
+      })
     }
   }
   ttsPlayAudio(text)

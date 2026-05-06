@@ -14,6 +14,8 @@
         <IconFluentDismissCircle20Filled v-if="props.type === 'error'" class="message-icon" />
         <span class="message-text">{{ message }}</span>
 
+        <button v-if="action" class="message-action" @click="handleAction">{{ action.text }}</button>
+
         <Close v-if="showClose" class="message-close" @click="close" />
       </div>
     </div>
@@ -24,6 +26,11 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { Close } from '../icon'
 
+interface ToastAction {
+  text: string
+  onClick?: () => void
+}
+
 interface Props {
   message: string
   type?: 'success' | 'warning' | 'info' | 'error'
@@ -31,6 +38,7 @@ interface Props {
   showClose?: boolean
   shadow?: boolean
   anim?: boolean
+  action?: ToastAction
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -64,6 +72,10 @@ const handleMouseEnter = () => {
 
 const handleMouseLeave = () => {
   startTimer()
+}
+
+const handleAction = () => {
+  props.action?.onClick?.()
 }
 
 const close = () => {
@@ -168,6 +180,14 @@ html.dark {
 
 .message-text {
   @apply flex-1 lh-none;
+}
+
+.message-action {
+  @apply ml-2 shrink-0 cp text-sm font-medium px-2 py-0.5 rounded color-blue;
+  border: 1px solid currentColor;
+  background: transparent;
+  line-height: 1.4;
+  transition: opacity 0.2s;
 }
 
 .message-close {
