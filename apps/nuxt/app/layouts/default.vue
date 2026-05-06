@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { BaseIcon, ToastComponent } from '@typewords/base'
+import { BaseButton, BaseIcon, ToastComponent } from '@typewords/base'
 import Logo from '@typewords/core/components/Logo.vue'
 import MigrateDialog from '@typewords/core/components/dialog/MigrateDialog.vue'
 import IeDialog from '@typewords/core/components/dialog/IeDialog.vue'
@@ -30,16 +30,6 @@ watch(() => settingStore.sideExpand, toggleExpand)
 
 //迁移数据
 let showTransfer = $ref(false)
-onMounted(() => {
-  init()
-
-  if (new URLSearchParams(window.location.search).get('from_old_site') === '1' && location.origin === Origin) {
-    if (localStorage.getItem('__migrated_from_2study_top__')) return
-    setTimeout(() => {
-      showTransfer = true
-    }, 1000)
-  }
-})
 
 watch(
   () => settingStore.load,
@@ -62,6 +52,17 @@ const route = useRoute()
 
 const showIcon = $computed(() => {
   return ['/words', '/articles', '/setting', '/help', '/doc', '/feedback'].includes(route.path)
+}) 
+
+onMounted(() => {
+  init()
+
+  if (new URLSearchParams(window.location.search).get('from_old_site') === '1' && location.origin === Origin) {
+    if (localStorage.getItem('__migrated_from_2study_top__')) return
+    setTimeout(() => {
+      showTransfer = true
+    }, 1000)
+  }
 })
 </script>
 
@@ -157,6 +158,8 @@ const showIcon = $computed(() => {
       <router-view></router-view>
 
       <div class="absolute right-4 top-4 flex z-1 gap-2" v-if="showIcon">
+        <MiniProgram/>
+
         <div class="relative group">
           <BaseIcon>
             <IconPhTranslate />
@@ -349,5 +352,5 @@ const showIcon = $computed(() => {
   .mobile-top-nav {
     display: none;
   }
-}
+} 
 </style>

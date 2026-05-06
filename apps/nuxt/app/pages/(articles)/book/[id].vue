@@ -2,9 +2,9 @@
 import Empty from '@typewords/core/components/Empty.vue'
 import ArticleList from '@typewords/core/components/list/ArticleList.vue'
 import { useBaseStore } from '@typewords/core/stores/base.ts'
-import type { Article, Dict } from '@typewords/core/types/types.ts'
+import type { Article, Dict, Statistics } from '@typewords/core/types/types.ts'
 import { useRuntimeStore } from '@typewords/core/stores/runtime.ts'
-import { BaseButton, BaseIcon, Switch, Toast, BackIcon } from '@typewords/base'
+import { BackIcon, BaseButton, BaseIcon, Switch, Toast } from '@typewords/base'
 import { useRoute, useRouter } from 'vue-router'
 import EditBook from '@typewords/core/components/article/EditBook.vue'
 import { computed, onMounted, onUnmounted, watch } from 'vue'
@@ -25,6 +25,9 @@ import { useFetch } from '@vueuse/core'
 import { DICT_LIST } from '@typewords/core/config/env.ts'
 import { useGetDict } from '@typewords/core/hooks/dict.ts'
 import { DictType } from '@typewords/core/types/enum.ts'
+import { usePracticeWordPersistence } from '@typewords/core/composables/usePracticePersistence.ts'
+import { getPracticeArticleCacheLocal } from '@typewords/core/utils/cache.ts'
+
 const { t } = useI18n()
 
 const runtimeStore = useRuntimeStore()
@@ -34,6 +37,7 @@ const router = useRouter()
 const route = useRoute()
 const { nav } = useNav()
 
+const practice = usePracticeWordPersistence()
 // useHead({
 //   title: `${runtimeStore.editDict.name ?? ''}`,
 // })
@@ -54,7 +58,22 @@ async function startPractice() {
   if (!sbook.articles.length) {
     return Toast.warning('没有文章可学习！')
   }
+
   studyLoading = true
+  const cache = await getPracticeArticleCacheLocal()
+  if (cache) {
+    let currentArticle = store.sbook.articles[store.sbook.lastLearnIndex]
+    let data: Partial<Statistics> & { title: string; articleId: number } = {
+      articleId: Number(currentArticle.id),
+      title: currentArticle.title,
+      spend: cache.statStoreData.spend,
+      startDate: cache.statStoreData.startDate,
+      total: cache.statStoreData.total,
+      wrong: cache.statStoreData.wrong,
+    }
+    store.sbook.statistics.push(data as any)
+    await practice.clear()
+  }
   await store.changeBook(sbook)
   studyLoading = false
 
@@ -271,7 +290,12 @@ watch(
             <template v-if="selectArticle.id">
               <template v-if="selectArticle.id === -1">
                 <div class="flex gap-4 mt-2">
-                  <NuxtImg :src="runtimeStore.editDict?.cover" class="w-30 rounded-md" v-if="runtimeStore.editDict?.cover" alt="" />
+                  <NuxtImg
+                    :src="runtimeStore.editDict?.cover"
+                    class="w-30 rounded-md"
+                    v-if="runtimeStore.editDict?.cover"
+                    alt=""
+                  />
                   <div class="text-lg">{{ runtimeStore.editDict.description }}</div>
                 </div>
                 <div class="text-base mt-10" v-if="totalSpend">{{ $t('total_study_time') }}：{{ totalSpend }}</div>

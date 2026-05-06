@@ -374,17 +374,33 @@ let mobileMenuOpen = $ref(false)
             >
               {{ APP_NAME }}
             </h1>
-             <!-- Site URL badge -->
+            <!-- Site URL badge -->
             <div class="flex justify-center lg:justify-start mt-5">
               <a
                 :href="Origin"
                 target="_blank"
                 class="inline-flex items-center gap-1.5 text-[.8rem] text-[var(--hw-text-3)] no-underline px-3 py-1.5 rounded-full border border-[var(--hw-border)] bg-[var(--hw-bg-card)] hover:border-[#7c3aed] hover:text-[#7c3aed] transition-all duration-150 tracking-wide"
               >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0 opacity-70"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  class="shrink-0 opacity-70"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path
+                    d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"
+                  />
+                </svg>
                 <span>{{ Origin }}</span>
               </a>
             </div>
+
             <!-- Sub -->
             <p class="text-[clamp(.95rem,2.5vw,1.2rem)] text-[var(--hw-text-2)] mb-5 leading-[1.65]">
               打字记单词，科学间隔复习，一次敲击，一点进步
@@ -420,13 +436,13 @@ let mobileMenuOpen = $ref(false)
             <!-- 手机端不支持提示 Banner（仅手机端可见，显示在按钮上方） -->
             <div class="block sm:hidden mb-4">
               <div
-                class="flex items-start gap-2.5 bg-[rgba(234,179,8,.1)] border border-[rgba(234,179,8,.4)] text-[#92400e] rounded-xl px-4 py-3 text-[.85rem] leading-[1.6]"
+                class="flex text-align-start items-center gap-2.5 bg-[rgba(234,179,8,.1)] border border-[rgba(234,179,8,.4)] text-[#92400e] rounded-xl px-4 py-3 leading-[1.6]"
               >
-                <span class="shrink-0 text-[1.1rem] mt-[.05rem]">⚠️</span>
                 <span
-                  >本工具为<strong>键盘输入</strong>设计，暂不支持手机使用，建议在
-                  <strong>PC 或平板</strong> 上访问以体验完整功能。</span
+                  >⚠️ 网站专为<strong>键盘输入</strong>设计，手机使用体验不佳。手机建议扫描右侧
+                  <strong>小程序二维码</strong> 使用，体验完整功能。</span
                 >
+                <NuxtImg src="/imgs/mini.png" alt="小程序二维码" class="w-30 h-30 rounded-lg" />
               </div>
             </div>
             <!-- CTA buttons -->
@@ -443,8 +459,9 @@ let mobileMenuOpen = $ref(false)
                 class="inline-flex items-center justify-center px-7 h-11 rounded-lg font-semibold text-[.95rem] text-[var(--hw-text)] bg-transparent border border-solid border-[var(--hw-border)] no-underline hover:bg-[rgba(124,58,237,.06)] hover:border-[#7c3aed] hover:text-[#7c3aed] transition-all duration-150 sm:w-auto"
                 :href="GITHUB"
                 target="_blank"
-                >查看源码 →</a
+                >查看源码</a
               >
+              <NuxtImg src="/imgs/mini.png" alt="小程序二维码" class="hidden sm:block w-30 h-30 rounded-lg" />
             </div>
           </div>
           <!-- Right: 打字 Demo 卡片（PC 端可见） -->
@@ -500,7 +517,7 @@ let mobileMenuOpen = $ref(false)
                 <div class="h-14 flex justify-end flex-col">
                   <div v-if="demoDone" class="mt-3 flex flex-col items-center gap-1">
                     <div class="text-[1.2rem] text-[#16a34a] font-bold">✓ 完成！</div>
-                    <div class="text-[.78rem] text-[var(--hw-text-3)]">
+                    <div class="text-sm text-blue-5">
                       按
                       <kbd
                         class="inline-flex items-center justify-center px-1.5 h-5 bg-[var(--hw-bg)] border border-[var(--hw-border)] rounded text-[.72rem] font-mono"
@@ -509,13 +526,10 @@ let mobileMenuOpen = $ref(false)
                       切换下一个
                     </div>
                   </div>
-                  <div
-                    v-else-if="!demoFocused"
-                    class="mt-3 text-[.78rem] text-[var(--hw-text-3)] flex items-center gap-1"
-                  >
+                  <div v-else-if="!demoFocused" class="mt-3 text-sm text-blue-5 flex items-center gap-1">
                     <span>点击此处或按任意键开始打字</span>
                   </div>
-                  <div v-else class="mt-3 text-[.78rem] text-[var(--hw-text-3)]">逐字输入单词，输错会标红</div>
+                  <div v-else class="mt-3 text-sm text-blue-5">逐字输入单词，输错会标红</div>
                 </div>
                 <!-- 进度点 -->
                 <div class="flex gap-1.5 mt-auto pt-2">
@@ -528,7 +542,7 @@ let mobileMenuOpen = $ref(false)
                 </div>
               </div>
             </div>
-            <p class="text-center text-[.75rem] text-[var(--hw-text-3)] mt-3">↑ 点击并用键盘输入，体验核心打字功能</p>
+            <p class="text-center text-sm text-blue-5 mt-3">↑ 点击并用键盘输入，体验核心打字功能</p>
           </div>
         </div>
       </section>
@@ -824,7 +838,7 @@ let mobileMenuOpen = $ref(false)
       </section>
 
       <!-- FAQ -->
-      <section class="py-20 px-4 sm:px-8 ">
+      <section class="py-20 px-4 sm:px-8">
         <div class="max-w-[720px] mx-auto">
           <!-- Section header -->
           <div class="text-center mb-12">
@@ -861,7 +875,7 @@ let mobileMenuOpen = $ref(false)
     </main>
 
     <!-- FOOTER -->
-    <footer class="border-t border-[var(--hw-border)]  pt-14 px-4 sm:px-8 pb-0">
+    <footer class="border-t border-[var(--hw-border)] pt-14 px-4 sm:px-8 pb-0">
       <div
         class="max-w-[1100px] mx-auto grid grid-cols-1 md:grid-cols-[1fr_auto] gap-12 pb-12 border-b border-[var(--hw-border)]"
       >
@@ -927,7 +941,7 @@ let mobileMenuOpen = $ref(false)
   --hw-border: #e2e4e8;
   --hw-text: #0d0d0d;
   --hw-text-2: #555e6e;
-  --hw-text-3: #8a93a2;
+  --hw-text-3: #585d66;
   --hw-shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.06);
   --hw-shadow-md: 0 4px 20px rgba(0, 0, 0, 0.09);
   --hw-shadow-lg: 0 12px 48px rgba(0, 0, 0, 0.11);
@@ -941,7 +955,7 @@ let mobileMenuOpen = $ref(false)
   --hw-border: #2a3140;
   --hw-text: #e8eaf0;
   --hw-text-2: #8a93a8;
-  --hw-text-3: #4a5568;
+  --hw-text-3: #72839f;
   --hw-shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.35);
   --hw-shadow-md: 0 4px 20px rgba(0, 0, 0, 0.45);
   --hw-shadow-lg: 0 12px 48px rgba(0, 0, 0, 0.55);

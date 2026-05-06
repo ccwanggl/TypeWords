@@ -18,7 +18,7 @@ export interface ModalProps {
   cancelButtonText?: string
   keyboard?: boolean
   closeOnClickBg?: boolean
-  confirm?: any
+  onConfirm?: any
   beforeClose?: any
   t?: any
 }
@@ -137,10 +137,11 @@ async function onKeyDown(e: KeyboardEvent) {
 }
 
 async function ok() {
-  if (props.confirm) {
+  if (props.onConfirm) {
     confirmButtonLoading = true
-    await props.confirm()
+    let res = await props.onConfirm()
     confirmButtonLoading = false
+    if (res === false) return
   }
   emit('ok')
   await close()

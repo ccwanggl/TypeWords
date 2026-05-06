@@ -3,22 +3,17 @@ import { Slider } from '@typewords/base'
 import { defineAsyncComponent, watch } from 'vue'
 import { useBaseStore } from '../../stores/base.ts'
 import { WordPracticeModeNameMap } from '../../config/env'
+const Dialog = defineAsyncComponent(() => import('@typewords/base/Dialog'))
 
-const props = defineProps({
-  wordPracticeMode: Number,
-})
+const props = defineProps<{
+  wordPracticeMode: number
+  onConfirm?: (num: number) => Promise<void | boolean>
+}>()
 
 let wordPracticeMode = $computed(() => WordPracticeModeNameMap[props.wordPracticeMode])
 
-const Dialog = defineAsyncComponent(() => import('@typewords/base/Dialog'))
-
 const store = useBaseStore()
-
 const model = defineModel()
-
-const emit = defineEmits<{
-  ok: [val: number]
-}>()
 
 let num = $ref(0)
 let min = $ref(0)
@@ -36,7 +31,13 @@ watch(
 </script>
 
 <template>
-  <Dialog v-model="model" :title="wordPracticeMode + '设置'" :footer="true" :padding="true" @ok="emit('ok', num)">
+  <Dialog
+    v-model="model"
+    :title="wordPracticeMode + '设置'"
+    :footer="true"
+    :padding="true"
+    :onConfirm="() => onConfirm(num)"
+  >
     <div class="w-120 color-main">
       <div class="flex gap-4 items-end mb-2">
         <span

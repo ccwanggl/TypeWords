@@ -82,19 +82,12 @@ let practiceData = $ref<PracticeWordCache>({
   statStoreData: null,
 } as any)
 
-function resetCacheData() {
+async function resetCacheData() {
+  isSaveData && flushStatToStore(practiceData.statStoreData)
   isSaveData = false
   practiceData.practiceData = null
   practiceData.statStoreData = null
-  wordPersistence.clear()
-}
-
-/**
- * 清空练习缓存前，将进行中的统计数据落库到 store.sdict.statistics，避免学习记录丢失
- */
-function saveStatBeforeClear() {
-  if (!isSaveData) return
-  flushStatToStore(practiceData.statStoreData)
+  await wordPersistence.clear()
 }
 
 // runtimeStore.globalLoading练习界面，退出时会调用一个保存，可能会卡住。当调用完成再init
@@ -131,7 +124,7 @@ watch(
         if (settingStore.first && !r && !isMobile()) tour.start()
       }, 500)
     }
-  }, ),
+  }),
   { immediate: true }
 )
 
@@ -410,17 +403,15 @@ function check(cb: Function) {
 }
 
 async function savePracticeSetting() {
-  Toast.success('修改成功')
-  saveStatBeforeClear()
-  resetCacheData()
+  await resetCacheData()
   await store.changeDict(runtimeStore.editDict)
   practiceData.taskWords = getCurrentStudyWord()
+  Toast.success('修改成功')
 }
 
-async function onShufflePracticeSettingOk(total) {
-  saveStatBeforeClear()
+async function onShufflePracticeSettingOk(total: number) {
   await dataSync.saveDictState()
-  resetCacheData()
+  await resetCacheData()
   settingStore.wordPracticeMode = editingWordPracticeMode
 
   window.umami?.track('startStudyWord', {
@@ -450,15 +441,13 @@ async function onShufflePracticeSettingOk(total) {
 }
 
 async function saveLastPracticeIndex(e) {
-  Toast.success('修改成功')
   runtimeStore.editDict.lastLearnIndex = e
   // runtimeStore.editDict.complete = e >= runtimeStore.editDict.length - 1
   showChangeLastPracticeIndexDialog = false
-  isSaveData = false
-  saveStatBeforeClear()
-  resetCacheData()
+  await resetCacheData()
   await store.changeDict(runtimeStore.editDict)
   practiceData.taskWords = getCurrentStudyWord()
+  Toast.success('修改成功')
 }
 
 const { data: recommendDictList, isFetching } = useFetch(resourceWrap(DICT_LIST.WORD.RECOMMENDED)).json()
@@ -794,7 +783,11 @@ onUnmounted(() => {
     </div>
   </BasePage>
 
-  <PracticeSettingDialog :show-left-option="false" v-model="showPracticeSettingDialog" @ok="savePracticeSetting" />
+  <PracticeSettingDialog
+    :show-left-option="false"
+    v-model="showPracticeSettingDialog"
+    :onConfirm="savePracticeSetting"
+  />
 
   <ChangeLastPracticeIndexDialog v-model="showChangeLastPracticeIndexDialog" @ok="saveLastPracticeIndex" />
 
@@ -802,7 +795,7 @@ onUnmounted(() => {
 
   <ShufflePracticeSettingDialog
     v-model="showShufflePracticeSettingDialog"
-    @ok="onShufflePracticeSettingOk"
+    :onConfirm="onShufflePracticeSettingOk"
     :wordPracticeMode="editingWordPracticeMode"
   />
 

@@ -8,10 +8,13 @@ import { execSync } from 'child_process'
 import { defineNuxtConfig } from 'nuxt/config'
 
 let latestCommitHash = ''
+let latestCommitTime = ''
 try {
   latestCommitHash = execSync('git rev-parse --short HEAD').toString().trim()
+  latestCommitTime = execSync('git log -1 --format=%ci').toString().trim()
 } catch (e) {
   latestCommitHash = 'unknown'
+  latestCommitTime = 'unknown'
 }
 
 const siteOrigin = (process.env.ORIGIN || 'https://typewords.cc').replace(/\/$/, '')
@@ -187,6 +190,7 @@ export default defineNuxtConfig({
       origin: process.env.ORIGIN || 'https://typewords.cc',
       host: process.env.HOST || 'typewords.cc',
       latestCommitHash: latestCommitHash + (process.env.NODE_ENV === 'production' ? '' : ' (dev)'),
+      latestCommitTime: latestCommitTime,
     },
   },
   // 构建配置

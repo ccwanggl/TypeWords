@@ -41,11 +41,12 @@ import { useI18n } from 'vue-i18n'
 import { wordDelete } from '@typewords/core/apis/words.ts'
 import { copyOfficialDict } from '@typewords/core/apis/dict.ts'
 import { getPracticeWordCacheLocal, PRACTICE_WORD_CACHE } from '@typewords/core/utils/cache.ts'
-import { flushStatToStore } from '@typewords/core/composables/usePracticePersistence'
+import { flushStatToStore, usePracticeWordPersistence } from '@typewords/core/composables/usePracticePersistence'
 import { Sort, WordPracticeMode } from '@typewords/core/types/enum.ts'
 import saveAs from 'file-saver'
 
 const runtimeStore = useRuntimeStore()
+const wordPersistence = usePracticeWordPersistence()
 const base = useBaseStore()
 const router = useRouter()
 const route = useRoute()
@@ -295,10 +296,8 @@ async function startPractice(query = {}) {
   // 切换词典前，先将进行中的练习统计落库，避免学习记录丢失
   const cachedBeforeSwitch = getPracticeWordCacheLocal()
   flushStatToStore((cachedBeforeSwitch as any)?.statStoreData)
-  localStorage.removeItem(PRACTICE_WORD_CACHE.key)
-  studyLoading = true
+  await wordPersistence.clear()
   await base.changeDict(runtimeStore.editDict)
-  studyLoading = false
   window.umami?.track('startStudyWord', {
     name: store.sdict.name,
     index: store.sdict.lastLearnIndex,
@@ -584,9 +583,9 @@ watch(
         buttons: [
           {
             text: `下一步（4/${TourConfig.total}）`,
-            action() {
+            action: async () => {
               tour.next()
-              startPractice({ guide: 1 })
+              await startPractice({ guide: 1 })
             },
           },
         ],
@@ -863,7 +862,7 @@ defineRender(() => {
         showLeftOption
         modelValue={showPracticeSettingDialog}
         onUpdate:modelValue={val => (showPracticeSettingDialog = val)}
-        onOk={startPractice}
+        onConfirm={startPractice}
       />
     </BasePage>
   )
