@@ -289,14 +289,17 @@ const { nav } = useNav()
 
 //todo 可以和首页合并
 async function startPractice(query = {}) {
+  // debugger
   //这里重置一下，因为下面切换词典后，导致学习进度为0，而切换前的模式有可能需要有进度才可以用
   if (![WordPracticeMode.Free, WordPracticeMode.System].includes(settingStore.wordPracticeMode)) {
     settingStore.wordPracticeMode = WordPracticeMode.System
   }
   // 切换词典前，先将进行中的练习统计落库，避免学习记录丢失
-  const cachedBeforeSwitch = getPracticeWordCacheLocal()
-  flushStatToStore((cachedBeforeSwitch as any)?.statStoreData)
-  await wordPersistence.clear()
+  const cache = await getPracticeWordCacheLocal()
+  if (cache) {
+    flushStatToStore((cache as any)?.statStoreData)
+    await wordPersistence.clear()
+  }
   await base.changeDict(runtimeStore.editDict)
   window.umami?.track('startStudyWord', {
     name: store.sdict.name,
