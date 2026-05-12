@@ -136,7 +136,7 @@ export interface Dict extends DictResource {
   custom: boolean //是否是自定义词典
   complete: boolean //是否学习完成，学完了设为true，然后lastLearnIndex重置
   //后端字段
-  en_name?: string
+  enName?: string
   createdBy?: string
   category_id?: number
   is_default?: boolean
