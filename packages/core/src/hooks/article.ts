@@ -154,7 +154,7 @@ export function genArticleSectionData(article: Article): number {
   if (article?.lrcPosition?.length) {
     article.sections.map((v, i) => {
       v.map((w, j) => {
-        w.audioPosition = article.lrcPosition[count]
+        w.audioPosition = article?.lrcPosition?.[count]
         count++
       })
     })

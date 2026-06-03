@@ -26,7 +26,7 @@ import {
   useNav,
 } from '@typewords/core/utils'
 import type { DictResource, Statistics } from '@typewords/core/types/types.ts'
-import { watch } from 'vue'
+import { shallowReactive, watch } from 'vue'
 import { getCurrentStudyWord } from '@typewords/core/hooks/dict.ts'
 import { useRuntimeStore } from '@typewords/core/stores/runtime.ts'
 import Book from '@typewords/core/components/Book.vue'
@@ -62,7 +62,7 @@ const settingStore = useSettingStore()
 const wordPersistence = usePracticeWordPersistence()
 const dataSync = useDataSyncPersistence()
 const router = useRouter()
-const { nav } = useNav()
+const {nav} = useNav()
 const runtimeStore = useRuntimeStore()
 let loading = $ref(true)
 let isSaveData = $ref(false)
@@ -125,7 +125,7 @@ watch(
       }, 500)
     }
   }),
-  { immediate: true }
+  {immediate: true}
 )
 
 async function onvisibilitychange() {
@@ -141,7 +141,7 @@ async function onvisibilitychange() {
 
 async function init() {
   if (AppEnv.CAN_REQUEST) {
-    let res = await myDictList({ type: 'word' })
+    let res = await myDictList({type: 'word'})
     if (res.success) {
       store.setState(Object.assign(store.$state, res.data))
     }
@@ -150,9 +150,32 @@ async function init() {
   document.removeEventListener('visibilitychange', onvisibilitychange)
   document.addEventListener('visibilitychange', onvisibilitychange)
 
-  if (store.word.studyIndex >= 3) {
+  let studyIndex = store.word.studyIndex;
+  if (studyIndex >= 3) {
     if (!store.sdict.custom && !store.sdict.words.length) {
-      store.word.bookList[store.word.studyIndex] = await _getDictDataByUrl(store.sdict)
+      let dictList = await fetch(resourceWrap(DICT_LIST.WORD.ALL)).then(r => r.json())
+      let dict = await _getDictDataByUrl(store.sdict)
+      let r = dictList.find(v => [v.enName, v.id].includes(store.sdict.id))
+      if (r) {
+        store.word.bookList[studyIndex].words = dict.words
+        store.word.bookList[studyIndex].id = r.id
+        store.word.bookList[studyIndex].enName = r.enName
+        store.word.bookList[studyIndex].cover = r.cover
+        store.word.bookList[studyIndex].category = r.category
+        store.word.bookList[studyIndex].tags = r.tags
+        store.word.bookList[studyIndex].url = r.url
+        store.word.bookList[studyIndex].description = r.description
+        store.word.bookList[studyIndex].name = r.name
+      } else {
+        store.word.bookList[studyIndex] = dict
+      }
+      store.word.bookList[studyIndex].length = dict.words.length
+      let s = store.word.bookList[studyIndex]
+      if (s.lastLearnIndex > s.length) {
+        store.word.bookList[studyIndex].lastLearnIndex = s.length
+        store.word.bookList[studyIndex].complete = true
+        await resetCacheData()
+      }
     }
   }
 
@@ -205,6 +228,7 @@ async function startPractice(practiceMode: WordPracticeMode, resetCache: boolean
 function freePractice() {
   startPractice(WordPracticeMode.Free, settingStore.wordPracticeMode !== WordPracticeMode.Free)
 }
+
 function systemPractice() {
   startPractice(
     settingStore.wordPracticeMode === WordPracticeMode.Free ? WordPracticeMode.System : settingStore.wordPracticeMode,
@@ -308,7 +332,7 @@ function onSelectCalendarDate(dateKey: string) {
   for (const book of store.word.bookList) {
     for (const stat of book.statistics ?? []) {
       if (dayjs(stat.startDate).format('YYYY-MM-DD') === dateKey) {
-        rows.push({ ...stat, dictName: book.name })
+        rows.push({...stat, dictName: book.name})
       }
     }
   }
@@ -449,7 +473,7 @@ async function saveLastPracticeIndex(e) {
   Toast.success('修改成功')
 }
 
-const { data: recommendDictList, isFetching } = useFetch(resourceWrap(DICT_LIST.WORD.RECOMMENDED)).json()
+const {data: recommendDictList, isFetching} = useFetch(resourceWrap(DICT_LIST.WORD.RECOMMENDED)).json()
 
 const systemPracticeText = $computed(() => {
   if (settingStore.wordPracticeMode === WordPracticeMode.Free) {
@@ -483,7 +507,7 @@ onUnmounted(() => {
       <div class="flex-1 flex flex-col justify-between">
         <div class="flex gap-3">
           <div class="p-1 center rounded-full bg-white">
-            <IconFluentBookNumber20Filled class="text-xl color-link" />
+            <IconFluentBookNumber20Filled class="text-xl color-link"/>
           </div>
           <div @click="goDictDetail(store.sdict)" class="text-2xl font-bold cursor-pointer">
             {{ store.sdict.name || $t('no_dict_selected') }}
@@ -512,7 +536,7 @@ onUnmounted(() => {
           <div class="flex items-center mt-4 gap-4">
             <BaseButton type="info" size="small" @click="router.push('/dict-list')">
               <div class="center gap-1">
-                <IconFluentArrowSwap20Regular />
+                <IconFluentArrowSwap20Regular/>
                 <span>{{ $t('select_dict') }}</span>
               </div>
             </BaseButton>
@@ -523,13 +547,13 @@ onUnmounted(() => {
             >
               <BaseButton type="info" size="small" v-if="store.sdict.id">
                 <div class="center gap-1">
-                  <IconFluentSlideTextTitleEdit20Regular />
+                  <IconFluentSlideTextTitleEdit20Regular/>
                   <span>{{ $t('change_progress') }}</span>
                 </div>
               </BaseButton>
             </PopConfirm>
 
-            <BaseButton type="info" size="small" @click="router.push('/fsrs')"> 学习记录 </BaseButton>
+            <BaseButton type="info" size="small" @click="router.push('/fsrs')"> 学习记录</BaseButton>
           </div>
         </template>
 
@@ -537,7 +561,7 @@ onUnmounted(() => {
           <div class="title">{{ $t('select_dict_to_start') }}</div>
           <BaseButton id="step1" type="primary" size="large" @click="router.push('/dict-list')">
             <div class="center gap-1">
-              <IconFluentAdd16Regular />
+              <IconFluentAdd16Regular/>
               <span>{{ $t('select_dict') }}</span>
             </div>
           </BaseButton>
@@ -547,14 +571,14 @@ onUnmounted(() => {
         <div class="flex justify-between">
           <div class="flex items-center gap-2">
             <div class="p-2 center rounded-full bg-white">
-              <IconFluentStar20Filled class="text-lg color-amber" />
+              <IconFluentStar20Filled class="text-lg color-amber"/>
             </div>
             <div class="text-xl font-bold">
               {{ isSaveData ? $t('last_task') : $t('today_task') }}
             </div>
             <span class="color-link cursor-pointer" v-if="store.sdict.id" @click="showPracticeWordListDialog = true">{{
-              $t('word_list')
-            }}</span>
+                $t('word_list')
+              }}</span>
           </div>
           <div class="flex gap-1 items-center" v-if="store.sdict.id">
             {{ $t('daily_goal') }}
@@ -567,7 +591,7 @@ onUnmounted(() => {
               title="当前存在未完成的学习任务，修改会重新生成学习任务，是否继续？"
               @confirm="check(() => (showPracticeSettingDialog = true))"
             >
-              <BaseButton type="info" size="small">{{ $t('change') }} </BaseButton>
+              <BaseButton type="info" size="small">{{ $t('change') }}</BaseButton>
             </PopConfirm>
           </div>
         </div>
@@ -594,7 +618,7 @@ onUnmounted(() => {
             >
               <div class="flex items-center gap-2">
                 <span class="line-height-[2]">{{ systemPracticeText }}</span>
-                <IconFluentArrowCircleRight16Regular class="text-xl" />
+                <IconFluentArrowCircleRight16Regular class="text-xl"/>
               </div>
             </BaseButton>
             <template #options>
@@ -681,7 +705,7 @@ onUnmounted(() => {
                     : $t('free_practice')
                 }}
               </span>
-              <IconStreamlineColorPenDrawFlat class="text-xl" />
+              <IconStreamlineColorPenDrawFlat class="text-xl"/>
             </div>
           </BaseButton>
         </div>
@@ -722,7 +746,7 @@ onUnmounted(() => {
         <div class="flex gap-4 items-center">
           <PopConfirm title="确认删除所有选中词典？" @confirm="handleBatchDel" v-if="selectIds.length">
             <BaseIcon class="del" :title="$t('delete')">
-              <DeleteIcon />
+              <DeleteIcon/>
             </BaseIcon>
           </PopConfirm>
 
@@ -754,7 +778,7 @@ onUnmounted(() => {
           v-for="(item, j) in store.word.bookList"
           @click="goDictDetail(item)"
         />
-        <Book :is-add="true" @click="router.push('/dict-list')" />
+        <Book :is-add="true" @click="router.push('/dict-list')"/>
       </div>
     </div>
 
@@ -784,9 +808,9 @@ onUnmounted(() => {
     :onConfirm="savePracticeSetting"
   />
 
-  <ChangeLastPracticeIndexDialog v-model="showChangeLastPracticeIndexDialog" @ok="saveLastPracticeIndex" />
+  <ChangeLastPracticeIndexDialog v-model="showChangeLastPracticeIndexDialog" @ok="saveLastPracticeIndex"/>
 
-  <PracticeWordListDialog :data="practiceData?.taskWords" v-model="showPracticeWordListDialog" />
+  <PracticeWordListDialog :data="practiceData?.taskWords" v-model="showPracticeWordListDialog"/>
 
   <ShufflePracticeSettingDialog
     v-model="showShufflePracticeSettingDialog"
@@ -814,7 +838,7 @@ onUnmounted(() => {
               'bg-orange-100 text-orange-700': row.sessionRole === 'end',
             }"
           >
-            {{ { start: '学习开始', middle: '学习中', end: '学习结束' }[row.sessionRole] }}
+            {{ {start: '学习开始', middle: '学习中', end: '学习结束'}[row.sessionRole] }}
           </span>
         </div>
         <div class="text-sm text-gray-600 mt-1">
@@ -844,6 +868,7 @@ onUnmounted(() => {
   @extend .stat;
   @apply py-4 flex-1;
   width: unset;
+
   .num {
     @apply text-2xl break-keep;
   }

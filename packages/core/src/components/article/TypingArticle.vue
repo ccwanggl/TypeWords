@@ -849,7 +849,7 @@ const currentPractice = inject('currentPractice', [])
         <BaseButton @click="showQuestions = !showQuestions">{{ $t('show_questions') }}</BaseButton>
       </div>
       <div class="toggle" v-if="showQuestions">
-        <QuestionForm :questions="article.questions" :duration="300" :immediateFeedback="false" :randomize="true" />
+        <QuestionForm :questions="article?.questions" :duration="300" :immediateFeedback="false" :randomize="true" />
       </div>
     </template>
   </div>

@@ -1,6 +1,10 @@
 <script setup lang="ts">
 let logList = [
   {
+    date: '2026/06/04',
+    content: '修复所有已知的单词、文章错误',
+  },
+  {
     date: '2026/05/06',
     content: '添加小程序地址',
   },

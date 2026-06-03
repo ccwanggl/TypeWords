@@ -52,7 +52,7 @@ const groupedByCategoryAndTag = $computed(() => {
   for (const [key, value] of Object.entries(groupByCategory)) {
     data.push([key, groupByDictTags(value)])
   }
-  ;[data[2], data[3]] = [data[3], data[2]]
+  // ;[data[2], data[3]] = [data[3], data[2]]
   // console.log('data', data)
   return data
 })
