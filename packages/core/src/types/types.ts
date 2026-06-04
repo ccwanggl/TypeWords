@@ -71,9 +71,9 @@ export interface Article {
   sections: Sentence[][]
   audioSrc: string
   audioFileId: string
-  lrcPosition: number[][]
-  nameList: string[]
-  questions: {
+  lrcPosition?: number[][]
+  nameList?: string[]
+  questions?: {
     stem: string
     options: string[]
     correctAnswer: string[]
@@ -114,7 +114,7 @@ export interface Statistics {
 }
 
 export type DictResource = {
-  id: string
+  id: string | number
   name: string
   description: string
   url: string
@@ -137,7 +137,7 @@ export interface Dict extends DictResource {
   custom: boolean //是否是自定义词典
   complete: boolean //是否学习完成，学完了设为true，然后lastLearnIndex重置
   //后端字段
-  en_name?: string
+  enName?: string
   createdBy?: string
   category_id?: number
   is_default?: boolean

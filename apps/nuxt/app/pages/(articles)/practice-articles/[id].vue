@@ -330,7 +330,7 @@ function getCurrentPractice() {
 }
 
 function saveArticle(val: Article) {
-  console.log('saveArticle', val, JSON.stringify(val.lrcPosition))
+  console.log('saveArticle', val, JSON.stringify(val?.lrcPosition))
   console.log('saveArticle', val.textTranslate)
   showEditArticle = false
   let rIndex = store.sbook.articles.findIndex(v => v.id === val.id)

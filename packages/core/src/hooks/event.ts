@@ -260,7 +260,7 @@ export function useStartKeyboardEventListener() {
 
   useEventListener('keydown', (e: KeyboardEvent) => {
     //解决无法复制、全选的问题
-    if ((e.ctrlKey || e.metaKey) && ['KeyC', 'KeyA'].includes(e.code)) return
+    if ((e.ctrlKey || e.metaKey) && ['KeyC', 'KeyA', 'KeyD'].includes(e.code)) return
     const target = e.target as HTMLElement | null
     if (target?.closest('input, textarea, select, [contenteditable="true"]')) return
     if (window?.disableEventListener) return
