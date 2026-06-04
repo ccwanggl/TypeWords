@@ -9,6 +9,7 @@ export type Word = {
   word: string
   phonetic0: string
   phonetic1: string
+  note: string
   trans: {
     pos: string
     cn: string

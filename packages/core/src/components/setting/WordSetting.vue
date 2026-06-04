@@ -54,13 +54,19 @@ const settingStore = useSettingStore()
       <Switch v-model="settingStore.autoNextWord" />
     </SettingItem>
 
-    <SettingItem :title="$t('auto_next_word_time')" :desc="$t('auto_next_word_time_desc')">
+    <SettingItem
+      :title="settingStore.autoNextWord ? $t('auto_next_word_time') : '空格冷却时间'"
+      :desc="
+        settingStore.autoNextWord
+          ? $t('auto_next_word_time_desc')
+          : '如果单词刚完成，为避免同时按下最后一个字母和空格键时跳过，忽略空格键的时间'
+      "
+    >
       <InputNumber
         v-model="settingStore.waitTimeForChangeWord"
-        :disabled="!settingStore.autoNextWord"
         :min="0"
         :max="10000"
-        :step="100"
+        :step="50"
         type="number"
       />
       <span class="ml-4">{{ $t('milliseconds') }}</span>

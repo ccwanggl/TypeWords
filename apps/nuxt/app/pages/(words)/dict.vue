@@ -62,6 +62,7 @@ const getDefaultFormWord = () => {
     word: '',
     phonetic0: '',
     phonetic1: '',
+    note: '',
     trans: '',
     sentences: '',
     phrases: '',
@@ -194,6 +195,7 @@ function word2Str(word) {
   res.word = word.word
   res.phonetic1 = word.phonetic1
   res.phonetic0 = word.phonetic0
+  res.note = word.note ?? ''
   res.trans = word.trans.map(v => (v.pos + v.cn).replaceAll('"', '')).join('\n')
   res.sentences = word.sentences.map(v => (v.c + '\n' + v.cn).replaceAll('"', '')).join('\n\n')
   res.phrases = word.phrases.map(v => (v.c + '\n' + v.cn).replaceAll('"', '')).join('\n\n')
@@ -376,6 +378,7 @@ function importXlsxData(e) {
                   word: v['单词'],
                   phonetic0: v['音标①'] ?? '',
                   phonetic1: v['音标②'] ?? '',
+                  note: v['笔记'] ?? '',
                   trans: v['翻译'] ?? '',
                   sentences: v['例句'] ?? '',
                   phrases: v['短语'] ?? '',
@@ -532,6 +535,7 @@ async function exportXlsxData() {
       单词: t.word,
       '音标①': t.phonetic0,
       '音标②': t.phonetic1,
+      笔记: t.note,
       翻译: t.trans,
       例句: t.sentences,
       短语: t.phrases,
@@ -799,6 +803,14 @@ defineRender(() => {
                       onUpdate:modelValue={e => (wordForm.trans = e)}
                       placeholder="一行一个翻译，前面词性，后面内容（如n.取消）；多个翻译请换行"
                       autosize={{ minRows: 6, maxRows: 10 }}
+                    />
+                  </FormItem>
+                  <FormItem label="笔记">
+                    <Textarea
+                      modelValue={wordForm.note}
+                      onUpdate:modelValue={e => (wordForm.note = e)}
+                      placeholder="记录这个单词的个人笔记"
+                      autosize={{ minRows: 3, maxRows: 8 }}
                     />
                   </FormItem>
                   <FormItem label="例句">

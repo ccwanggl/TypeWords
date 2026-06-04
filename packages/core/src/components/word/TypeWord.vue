@@ -99,6 +99,9 @@ const typingWordRef = $ref<HTMLDivElement>()
 // const volumeTranslateIconRef: any = $ref()
 
 let showAllCandidates = $ref(false)
+let editingNote = $ref(false)
+let noteFocused = $ref(false)
+let noteInputRef = $ref<HTMLTextAreaElement>()
 
 let displayWord = $computed(() => {
   return props.word.word.slice(input.length + wrong.length)
@@ -131,13 +134,15 @@ function updateCurrentWordInfo() {
   }
 }
 
-watch(() => props.word, reset, { deep: true })
+watch(() => props.word, reset)
 
 function reset() {
   clearJumpTimer()
   wrong = input = ''
   wordRepeatCount = 0
   showWordResult.value = inputLock = completeSelect = showAllCandidates = false
+  editingNote = false
+  noteFocused = false
   currentPracticeSentenceIndex = -1
   wordCompletedTime = 0 // 重置时间戳
   wrongTimes.value = 0
@@ -311,7 +316,9 @@ async function onTyping(e: KeyboardEvent) {
       if (right) {
         clearJumpTimer()
         // 如果单词刚完成（300ms内），忽略空格键，避免同时按下最后一个字母和空格键时跳过
-        if (wordCompletedTime && Date.now() - wordCompletedTime < 300) {
+        // Auto mode keeps a 200ms guard; manual mode uses the setting as the Space cooldown.
+        const spaceCooldownTime = settingStore.autoNextWord ? 200 : settingStore.waitTimeForChangeWord
+        if (wordCompletedTime && Date.now() - wordCompletedTime < spaceCooldownTime) {
           return
         }
         completeTypeWord(false)
@@ -546,6 +553,17 @@ function hideWord() {
   showFullWord = false
 }
 
+function editNote() {
+  editingNote = !editingNote
+  if (editingNote) {
+    _nextTick(() => noteInputRef?.focus())
+  }
+}
+
+function updateNote(e: Event) {
+  props.word.note = (e.target as HTMLTextAreaElement).value
+}
+
 function typo() {
   emit('wrong')
   wrongTimes.value++
@@ -757,6 +775,35 @@ const isCollect = $computed(() => isWordCollect(props.word))
           <IconFluentCheckmarkCircle16Regular v-if="!isSimple" />
           <IconFluentCheckmarkCircle16Filled v-else />
         </BaseIcon>
+        <BaseIcon @click="editNote" :title="editingNote ? '完成编辑笔记' : '编辑笔记'">
+          <svg v-if="editingNote" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M6 3.75h7.25A3.75 3.75 0 0 1 17 7.5v2.1l-4.03 4.03a2.3 2.3 0 0 0-.62 1.12l-.35 2.35a1.5 1.5 0 0 0 1.77 1.7l2.25-.45c.28-.06.54-.16.78-.31a2.75 2.75 0 0 1-2.55 1.71H6A2.75 2.75 0 0 1 3.25 17V6.5A2.75 2.75 0 0 1 6 3.75Z"
+              fill="currentColor"
+            />
+            <path
+              d="m14.56 15.46 4.9-4.9a.6.6 0 0 1 .85.85l-4.9 4.9-1.6.32.25-1.67a.8.8 0 0 1 .5-.5Z"
+              fill="currentColor"
+            />
+            <path d="M7.8 7.35h4.7M7.8 10.35h3" stroke="var(--color-bg)" stroke-width="1.4" stroke-linecap="round" />
+          </svg>
+          <svg v-else viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M6 4.5h7.25a3 3 0 0 1 3 3v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-11a2 2 0 0 1 2-2Z"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linejoin="round"
+            />
+            <path d="M8 8h4.5M8 11h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+            <path
+              d="m13.5 15.25 4.9-4.9a1.35 1.35 0 0 1 1.9 1.9l-4.9 4.9-2.25.45.35-2.35Z"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </BaseIcon>
         <BaseIcon
           @click="toggleWordCollect(word)"
           :title="
@@ -849,6 +896,24 @@ const isCollect = $computed(() => isWordCollect(props.word))
         showWordResult
       "
     >
+      <template v-if="editingNote || word?.note?.trim()">
+        <div class="line-white my-3"></div>
+        <div class="flex">
+          <div class="label">笔记</div>
+          <textarea
+            v-if="editingNote"
+            ref="noteInputRef"
+            class="note-input"
+            :value="word.note"
+            placeholder="记录这个单词的个人笔记"
+            @input="updateNote"
+            @focus="noteFocused = true"
+            @blur="noteFocused = false"
+          ></textarea>
+          <div v-else class="note-content">{{ word.note }}</div>
+        </div>
+      </template>
+
       <template v-if="word?.sentences?.length">
         <div class="line-white my-3"></div>
         <div class="flex flex-col gap-3">
@@ -968,6 +1033,7 @@ const isCollect = $computed(() => isWordCollect(props.word))
       </div>
     </div>
     <div
+      v-if="!noteFocused"
       class="cursor"
       :style="{
         top: cursor.top + 'px',
@@ -1043,6 +1109,23 @@ const isCollect = $computed(() => isWordCollect(props.word))
 
   .cn {
     @apply text-base;
+  }
+
+  .note-content {
+    @apply text-base whitespace-pre-wrap;
+  }
+
+  .note-input {
+    @apply text-base w-full box-border;
+    min-height: 5rem;
+    resize: vertical;
+    color: var(--color-font-2);
+    background: transparent;
+    border: 0;
+    padding: 0;
+    outline: none;
+    font: inherit;
+    line-height: inherit;
   }
 
   .en {

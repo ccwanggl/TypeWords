@@ -11,6 +11,7 @@ export function getDefaultWord(val: Partial<Word> = {}): Word {
     word: '',
     phonetic0: '',
     phonetic1: '',
+    note: '',
     trans: [],
     sentences: [],
     phrases: [],

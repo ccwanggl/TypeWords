@@ -160,6 +160,7 @@ export function useEventListener(type: string, listener: EventListenerOrEventLis
 
       const shouldFocusInput = (target: HTMLElement | null) => {
         if (!target) return false
+        if (target.closest('input, textarea, select, [contenteditable="true"]')) return false
         if (!window.location.pathname.includes('/practice')) return false
         const typingWord = target.closest('.typing-word')
         if (!typingWord) return false
@@ -260,6 +261,8 @@ export function useStartKeyboardEventListener() {
   useEventListener('keydown', (e: KeyboardEvent) => {
     //解决无法复制、全选的问题
     if ((e.ctrlKey || e.metaKey) && ['KeyC', 'KeyA', 'KeyD'].includes(e.code)) return
+    const target = e.target as HTMLElement | null
+    if (target?.closest('input, textarea, select, [contenteditable="true"]')) return
     if (window?.disableEventListener) return
     if (!runtimeStore.disableEventListener) {
       // 检查当前单词是否包含空格，如果包含，则空格键应该被视为输入
