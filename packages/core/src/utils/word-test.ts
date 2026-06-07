@@ -8,7 +8,7 @@ const TRAN_EQUALS_BASE_SCORE = 1 << 16;
 const TRANS_CHARS_COMMON_FACTOR = 1;
 const WORD_COMMON_FACTOR = 1 << 16;
 const WORD_CONTAIN_SCORE = 1 << 20;
-const FUZZ_SCORE_BASE = 1 << 16;
+const FUZZ_SCORE_BASE = 1 << 18;
 
 function getTrans(word: Word): { cn: string, freq: number }[] {
     let rsMap = new Map<string, { cn: string, freq: number }>();
