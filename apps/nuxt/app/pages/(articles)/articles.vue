@@ -342,7 +342,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <ImportBanner title="导入自己的文章" desc="支持txt/json/xlsx文件导入，或者手动输入文章导入" @click="nav('/import',{type:'article'})"  />
+    <ImportBanner title="导入自己的文章" desc="支持 json/xlsx 文件导入，或者手动输入文章导入" @click="nav('/import',{type:'article'})"  />
 
     <div class="card flex flex-col">
       <div class="flex justify-between">

@@ -740,7 +740,7 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <ImportBanner title="导入自己的单词" desc="支持txt/json/xlsx文件导入，或者手动输入单词导入" @click="nav('/import',{type:'word'})"  />
+    <ImportBanner title="导入自己的单词" desc="支持 txt/json/xlsx 文件导入，或者手动输入单词导入" @click="nav('/import',{type:'word'})"  />
 
     <div class="card flex flex-col">
       <div class="flex justify-between">

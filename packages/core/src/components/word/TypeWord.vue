@@ -316,7 +316,9 @@ async function onTyping(e: KeyboardEvent) {
         clearJumpTimer()
         // 如果单词刚完成（300ms内），忽略空格键，避免同时按下最后一个字母和空格键时跳过
         // 手动模式使用独立的空格冷却时间设置
-        const spaceCooldown = settingStore.autoNextWord ? settingStore.waitTimeForChangeWord : settingStore.spaceCooldownTime
+        const spaceCooldown = settingStore.autoNextWord
+          ? settingStore.waitTimeForChangeWord
+          : settingStore.spaceCooldownTime
         if (wordCompletedTime && Date.now() - wordCompletedTime < spaceCooldown) {
           return
         }
@@ -793,7 +795,7 @@ const isCollect = $computed(() => isWordCollect(props.word))
           <IconFluentCheckmarkCircle16Filled v-else />
         </BaseIcon>
         <BaseIcon @click="editNote" :title="editingNote ? '完成编辑笔记' : '编辑笔记'">
-            <IconFluentClipboardTextEdit20Regular />
+          <IconFluentClipboardTextEdit20Regular />
         </BaseIcon>
         <BaseIcon
           @click="toggleWordCollect(word)"
@@ -877,6 +879,29 @@ const isCollect = $computed(() => isWordCollect(props.word))
       </div>
     </div>
 
+    <template v-if="editingNote || store.noteData[word.word]?.trim()">
+      <div class="line-white my-3"></div>
+      <div class="flex flex-col gap-2">
+        <div class="flex">
+          <div class="label">笔记</div>
+          <Textarea
+            autofocus
+            v-if="editingNote"
+            v-model="noteInputValue"
+            placeholder="记录这个单词的个人笔记"
+            :autosize="{ minRows: 4, maxRows: 8 }"
+            class="note-textarea"
+          />
+          <div v-else class="note-content">{{ store.noteData[word.word] }}</div>
+        </div>
+        <div v-if="editingNote" class="flex justify-end mt-2">
+          <BaseButton size="large" type="info" v-if="store.noteData[word.word]" @click="deleteNote">删除</BaseButton>
+          <BaseButton size="large" @click="cancelNote">取消</BaseButton>
+          <BaseButton size="large" type="primary" @click="saveNote">保存</BaseButton>
+        </div>
+      </div>
+    </template>
+
     <div
       class="other anim"
       v-opacity="
@@ -887,29 +912,6 @@ const isCollect = $computed(() => isWordCollect(props.word))
         showWordResult
       "
     >
-      <template v-if="editingNote || store.noteData[word.word]?.trim()">
-        <div class="line-white my-3"></div>
-        <div class="flex flex-col gap-2">
-          <div class="flex">
-            <div class="label">笔记</div>
-            <Textarea
-              autofocus
-              v-if="editingNote"
-              v-model="noteInputValue"
-              placeholder="记录这个单词的个人笔记"
-              :autosize="{ minRows: 3, maxRows: 8 }"
-              class="note-textarea"
-            />
-            <div v-else class="note-content">{{ store.noteData[word.word] }}</div>
-          </div>
-          <div v-if="editingNote" class="flex justify-end">
-            <BaseButton size="small" type="info" v-if="store.noteData[word.word]" @click="deleteNote">删除</BaseButton>
-            <BaseButton size="small" @click="cancelNote">取消</BaseButton>
-            <BaseButton size="small" type="primary" @click="saveNote">保存</BaseButton>
-          </div>
-        </div>
-      </template>
-
       <template v-if="word?.sentences?.length">
         <div class="line-white my-3"></div>
         <div class="flex flex-col gap-3">
@@ -1109,15 +1111,6 @@ const isCollect = $computed(() => isWordCollect(props.word))
 
   .note-content {
     @apply text-base whitespace-pre-wrap;
-  }
-
-  .note-textarea {
-    :deep(textarea) {
-      background: transparent;
-      border-color: var(--color-input-border);
-      color: var(--color-font-2);
-      font: inherit;
-    }
   }
 
   .en {
