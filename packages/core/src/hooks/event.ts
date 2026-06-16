@@ -231,6 +231,7 @@ export function useEventListener(type: string, listener: EventListenerOrEventLis
         if (!window.location.pathname.includes('/practice')) return
         const typingWord = target.closest('#PracticeArea')
         if (!typingWord) return
+        if (target.closest('input, textarea, select, [contenteditable="true"]')) return false
         if (!getSelectedText()) {
           window.setTimeout(() => hiddenInput.focus(), 60)
         }
