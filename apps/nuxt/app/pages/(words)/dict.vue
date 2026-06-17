@@ -41,7 +41,6 @@ import {
   useNav,
 } from '@typewords/core/utils'
 import { getPracticeWordCacheLocal } from '@typewords/core/utils/cache.ts'
-import { MessageBox } from '@typewords/core/utils/MessageBox.tsx'
 import saveAs from 'file-saver'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -99,6 +98,7 @@ function syncDictInMyStudyList(study = false) {
       base.word.bookList.push(getDefaultDict(temp))
       if (study) base.word.studyIndex = base.word.bookList.length - 1
     }
+    tableRef.value.getData()
   }, 100)
 }
 
@@ -126,7 +126,7 @@ async function onSubmitWord() {
           return
         }
       } else {
-        data.id = nanoid(6)
+        data.id = allList.length + 1
         data.checked = false
         let r = allList.find(v => v.word === wordForm.word)
         if (r) {

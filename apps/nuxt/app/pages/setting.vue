@@ -680,6 +680,7 @@ function removeSbConfig() {
           </div>
 
           <div v-if="tabIndex === 6">
+            <p class="text-red font-bold">过时功能：由于经常同步失败，不再推荐继续使用，请等待官方同步功能</p>
             <!--          Supabase 设置  -->
             <SettingItem :title="$t('supabase_config')" :desc="$t('supabase_config_desc')">
               <div v-if="sbStatus.status !== 'idle'" class="mt-2 text-sm">
