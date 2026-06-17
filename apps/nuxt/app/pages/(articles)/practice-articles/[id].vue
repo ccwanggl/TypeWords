@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { addStat, setUserDictProp } from '@typewords/core/apis'
-import { BaseIcon, Tooltip, Toast } from '@typewords/base'
+import { BaseIcon, Toast, Tooltip } from '@typewords/base'
 import ConflictNotice from '@typewords/core/components/dialog/ConflictNotice.vue'
 import ArticleList from '@typewords/core/components/list/ArticleList.vue'
 import Panel from '@typewords/core/components/Panel.vue'
@@ -9,11 +9,8 @@ import SettingDialog from '@typewords/core/components/setting/SettingDialog.vue'
 import { AppEnv, DICT_LIST } from '@typewords/core/config/env.ts'
 import { genArticleSectionData, usePlayArticleTextAudio, usePlaySentenceAudio } from '@typewords/core/hooks/article.ts'
 import { useArticleOptions } from '@typewords/core/hooks/dict.ts'
-import {
-  useDisableEventListener,
-  useOnKeyboardEventListener,
-  useStartKeyboardEventListener,
-} from '@typewords/core/hooks/event.ts'
+import { useOnKeyboardEventListener, useStartKeyboardEventListener } from '@typewords/core/hooks/event.ts'
+import { useDisableEventListener } from '@typewords/utils'
 import useTheme from '@typewords/core/hooks/theme.ts'
 import ArticleAudio from '@typewords/core/components/article/ArticleAudio.vue'
 import EditSingleArticleModal from '@typewords/core/components/article/EditSingleArticleModal.vue'
@@ -35,7 +32,7 @@ import {
 } from '@typewords/core/utils'
 import { getPracticeArticleCacheLocal } from '@typewords/core/utils/cache.ts'
 import { usePracticeArticlePersistence } from '@typewords/core/composables/usePracticePersistence'
-import { useEvents, emitter, EventKey } from '@typewords/core/utils/eventBus'
+import { emitter, EventKey, useEvents } from '@typewords/core/utils/eventBus'
 import { computed, onMounted, onUnmounted, provide, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { DictType, PracticeArticleWordType, ShortcutKey } from '@typewords/core/types/enum.ts'
@@ -205,9 +202,7 @@ onMounted(() => {
 
 async function unmount() {
   document.removeEventListener('visibilitychange', onvisibilitychange)
-
   console.log('onUnmounted')
-  window.disableEventListener = false
   const cache = await getPracticeArticleCacheLocal()
   //如果有缓存，则更新花费的时间；因为用户不输入不会保存数据
   if (cache) {
@@ -221,8 +216,6 @@ async function unmount() {
 }
 
 onUnmounted(unmount)
-
-onDeactivated(unmount)
 
 useStartKeyboardEventListener()
 useDisableEventListener(() => loading)

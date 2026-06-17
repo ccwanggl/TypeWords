@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { defineAsyncComponent, watch } from 'vue'
 import { useSettingStore } from '../../stores/setting.ts'
-import { useDisableEventListener } from '../../hooks/event.ts'
+import { useDisableEventListener } from '@typewords/utils'
 import ConflictNoticeText from './ConflictNoticeText.vue'
 import { BaseButton } from '@typewords/base'
 
@@ -33,20 +33,13 @@ useDisableEventListener(() => show)
 </script>
 
 <template>
-  <Dialog
-    v-model="show"
-    :title="$t('important_notice')"
-    padding
-    :showClose="false"
-    :closeOnClickBg="false"
-  >
+  <Dialog v-model="show" :title="$t('important_notice')" padding :showClose="false" :closeOnClickBg="false">
     <div class="w-150 center flex-col color-main">
       <ConflictNoticeText />
 
       <div class="flex justify-end w-full mb-4">
-        <BaseButton id="dialog-ok" :disabled="countDown>0"
-                    @click="show = settingStore.conflictNotice = false"
-        >{{ $t('close') }} <span v-if="countDown">{{countDown}}</span>
+        <BaseButton id="dialog-ok" :disabled="countDown > 0" @click="show = settingStore.conflictNotice = false"
+          >{{ $t('close') }} <span v-if="countDown">{{ countDown }}</span>
         </BaseButton>
       </div>
     </div>

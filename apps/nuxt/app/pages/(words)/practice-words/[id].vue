@@ -5,11 +5,8 @@ import { emitter, EventKey, useEvents } from '@typewords/core/utils/eventBus.ts'
 import { useSettingStore } from '@typewords/core/stores/setting.ts'
 import { useRuntimeStore } from '@typewords/core/stores/runtime.ts'
 import type { Dict, PracticeData, TaskWords, Word } from '@typewords/core/types/types.ts'
-import {
-  useDisableEventListener,
-  useOnKeyboardEventListener,
-  useStartKeyboardEventListener,
-} from '@typewords/core/hooks/event.ts'
+import { useStartKeyboardEventListener } from '@typewords/core/hooks/event.ts'
+import { useDisableEventListener } from '@typewords/utils'
 import useTheme from '@typewords/core/hooks/theme.ts'
 import { getCurrentStudyWord, useWordOptions } from '@typewords/core/hooks/dict.ts'
 import {
@@ -776,20 +773,6 @@ async function savePracticeDataIns(where?) {
 
 const savePracticeData = debounce(savePracticeDataIns, 500)
 
-function onKeyUp(e: KeyboardEvent) {
-  // console.log('onKeyUp', e)
-  typingRef.hideWord()
-}
-
-function onKeyDown(e: KeyboardEvent) {
-  // console.log('onKeyDown', e)
-  switch (e.key) {
-    case 'Backspace':
-      typingRef.del()
-      break
-  }
-}
-
 function repeat() {
   console.log('重学一遍')
   wordPersistence.clear()
@@ -920,8 +903,7 @@ function randomWrite() {
 }
 
 useStartKeyboardEventListener()
-useDisableEventListener(() => loading)
-useOnKeyboardEventListener(onKeyDown, onKeyUp)
+// useDisableEventListener(() => loading)
 
 watch(isIniting, n => {
   if (!n) {

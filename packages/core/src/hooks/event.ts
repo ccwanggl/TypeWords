@@ -80,8 +80,6 @@ export function useWindowClick(cb: (e: PointerEvent) => void) {
 }
 
 export function useEventListener(type: string, listener: EventListenerOrEventListenerObject) {
-  const settingStore = useSettingStore()
-
   const invokeListener = (event: KeyboardEvent) => {
     if (typeof listener === 'function') {
       return (listener as EventListener)(event)
@@ -94,6 +92,7 @@ export function useEventListener(type: string, listener: EventListenerOrEventLis
   let cleanup: (() => void) | null = null
 
   const add = () => {
+    const emitKeys = new Set()
     const cleanupFns: Array<() => void> = []
     const registerCleanup = (fn: () => void) => cleanupFns.push(fn)
 
@@ -108,7 +107,7 @@ export function useEventListener(type: string, listener: EventListenerOrEventLis
       }
     }
 
-    if (settingStore.useInputMode || (isMobile() && type === 'keydown')) {
+    if (type === 'keydown') {
       const ensureMobileInput = () => {
         let input = document.querySelector('#typing-listener') as HTMLInputElement | null
         if (!input) {
@@ -124,8 +123,8 @@ export function useEventListener(type: string, listener: EventListenerOrEventLis
           input.setAttribute('aria-hidden', 'true')
           Object.assign(input.style, {
             position: 'fixed',
-            top: '0',
-            left: '599px',
+            top: '50vh',
+            left: '50vw',
             opacity: '0',
             pointerEvents: 'none',
             width: '1px',
@@ -172,6 +171,7 @@ export function useEventListener(type: string, listener: EventListenerOrEventLis
 
       const handleCompositionStart = () => {
         isComposing = true
+        Toast.warning('请切换到英文输入')
       }
 
       const handleCompositionEnd = (event: CompositionEvent) => {
@@ -192,37 +192,28 @@ export function useEventListener(type: string, listener: EventListenerOrEventLis
       }
 
       const handleInput = (event: InputEvent) => {
-        if (isComposing) return Toast.warning('请切换到英文输入')
+        if (isComposing) return
         const target = event.target as HTMLInputElement | null
         if (!target) return
         const value = target?.value ?? ''
-
+        let char = value.slice(-1) || (event as any).data?.slice(-1)
         if (event.inputType === 'deleteContentBackward') {
-          dispatchSyntheticKey({ key: 'Backspace', code: 'Backspace', keyCode: 8 })
+          char = 'Backspace'
+          if (emitKeys.has(char)) return
+          dispatchSyntheticKey({ key: char, code: charToCode(char), keyCode: 8 })
           target.value = ' '
           return
         }
 
-        const char = value.slice(-1) || (event as any).data?.slice(-1)
         if (!char) {
           target.value = ' '
           return
         }
-
+        if (emitKeys.has(char)) return
+        // console.log('handleInput', Date.now())
         const keyCode = char === ' ' ? 32 : char.toUpperCase().charCodeAt(0)
-        dispatchSyntheticKey({
-          key: char,
-          code: charToCode(char),
-          keyCode,
-        })
-
-        window.setTimeout(() => {
-          if (target) {
-            if (target.value.length > 1) {
-              target.value = target.value.slice(0, -1)
-            }
-          }
-        }, 0)
+        dispatchSyntheticKey({ key: char, code: charToCode(char), keyCode })
+        target.value = ' '
       }
 
       const handleFocusRequest = (event: MouseEvent | TouchEvent) => {
@@ -233,13 +224,18 @@ export function useEventListener(type: string, listener: EventListenerOrEventLis
         if (!typingWord) return
         if (target.closest('input, textarea, select, [contenteditable="true"]')) return false
         if (!getSelectedText()) {
-          window.setTimeout(() => hiddenInput.focus(), 60)
+          window.setTimeout(() => hiddenInput.focus(), 160)
         }
       }
 
       const windowListener = (e: KeyboardEvent) => {
-        if (e.code in CODE_TO_CHAR && !e.ctrlKey && !e.metaKey) return
+        // if (e.code in CODE_TO_CHAR && !e.ctrlKey && !e.metaKey) return
+        // console.log('windowListener', Date.now())
+        emitKeys.add(e.key)
         invokeListener(e)
+        setTimeout(() => {
+          emitKeys.delete(e.key)
+        }, 20)
       }
 
       hiddenInput.addEventListener('compositionstart', handleCompositionStart)
@@ -248,8 +244,8 @@ export function useEventListener(type: string, listener: EventListenerOrEventLis
       hiddenInput.addEventListener('compositionend', handleCompositionEnd)
       registerCleanup(() => hiddenInput.removeEventListener('compositionend', handleCompositionEnd))
 
-      hiddenInput.addEventListener('input', handleInput)
-      registerCleanup(() => hiddenInput.removeEventListener('input', handleInput))
+      hiddenInput.addEventListener('input', handleInput, { capture: true })
+      registerCleanup(() => hiddenInput.removeEventListener('input', handleInput, { capture: true }))
 
       window.addEventListener('click', handleFocusRequest)
       registerCleanup(() => window.removeEventListener('click', handleFocusRequest))
@@ -257,14 +253,14 @@ export function useEventListener(type: string, listener: EventListenerOrEventLis
       window.addEventListener('touchstart', handleFocusRequest)
       registerCleanup(() => window.removeEventListener('touchstart', handleFocusRequest))
 
-      window.addEventListener(type, windowListener)
-      registerCleanup(() => window.removeEventListener(type, windowListener))
+      window.addEventListener(type, windowListener, { capture: true })
+      registerCleanup(() => window.removeEventListener(type, windowListener, { capture: true }))
 
       registerCleanup(() => hiddenInput.remove())
     } else {
       const windowListener = (event: Event) => invokeListener(event as KeyboardEvent)
-      window.addEventListener(type, windowListener)
-      registerCleanup(() => window.removeEventListener(type, windowListener))
+      window.addEventListener(type, windowListener, { capture: true })
+      registerCleanup(() => window.removeEventListener(type, windowListener, { capture: true }))
     }
 
     cleanup = () => {
@@ -273,7 +269,6 @@ export function useEventListener(type: string, listener: EventListenerOrEventLis
     }
   }
   onMounted(add)
-  // onActivated(add)
 
   const remove = () => {
     if (cleanup) cleanup()
@@ -315,6 +310,7 @@ export function useStartKeyboardEventListener() {
   const settingStore = useSettingStore()
 
   useEventListener('keydown', (e: KeyboardEvent) => {
+    // console.log('keydown', e)
     //解决无法复制、全选的问题
     if ((e.ctrlKey || e.metaKey) && ['KeyC', 'KeyA', 'KeyD'].includes(e.code)) return
     if (!window?.disableEventListener) {
@@ -413,21 +409,4 @@ export function useOnKeyboardEventListener(onKeyDown: (e: KeyboardEvent) => void
   }
   onUnmounted(remove)
   onDeactivated(remove)
-}
-
-//因为如果用useStartKeyboardEventListener局部变量控制，当出现多个hooks时就不行了，所以用全局变量来控制
-export function useDisableEventListener(watchVal: any) {
-  watch(watchVal, (n: any) => {
-    window.disableEventListener = n
-    let input = document.querySelector('#typing-listener') as HTMLInputElement | null
-    if (input) {
-      setTimeout(()=>{
-        if (n) {
-          input.blur()
-        } else {
-          input.focus()
-        }
-      },100)
-    }
-  })
 }

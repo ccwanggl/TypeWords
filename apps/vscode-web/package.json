@@ -16,6 +16,7 @@
     "@typewords/base": "workspace:*",
     "@typewords/libs": "workspace:*",
     "@typewords/core": "workspace:*",
+    "@typewords/utils": "workspace:*",
     "jszip": "^3.10.1"
   },
   "config": {

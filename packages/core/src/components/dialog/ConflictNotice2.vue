@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { defineAsyncComponent } from 'vue'
 import { useSettingStore } from '../../stores/setting.ts'
-import { useDisableEventListener } from '../../hooks/event.ts'
+import { useDisableEventListener } from '@typewords/utils'
 import ConflictNoticeText from './ConflictNoticeText.vue'
 
 const Dialog = defineAsyncComponent(() => import('@typewords/base/Dialog'))

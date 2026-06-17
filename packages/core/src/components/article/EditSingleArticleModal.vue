@@ -1,10 +1,9 @@
 <script setup lang="ts">
-
-import type {Article} from '../../types';
-import {useDisableEventListener} from "../../hooks/event.ts";
-import EditArticle from "./EditArticle.vue";
-import {getDefaultArticle} from '../../types';
-import {defineAsyncComponent} from "vue";
+import type { Article } from '../../types'
+import { useDisableEventListener } from '@typewords/utils'
+import EditArticle from './EditArticle.vue'
+import { getDefaultArticle } from '../../types'
+import { defineAsyncComponent } from 'vue'
 
 const Dialog = defineAsyncComponent(() => import('@typewords/base/Dialog'))
 
@@ -15,7 +14,7 @@ interface IProps {
 
 const props = withDefaults(defineProps<IProps>(), {
   article: () => getDefaultArticle(),
-  modelValue: false
+  modelValue: false,
 })
 const emit = defineEmits<{
   save: [val: Article]
@@ -23,27 +22,17 @@ const emit = defineEmits<{
 }>()
 
 useDisableEventListener(() => props.modelValue)
-
 </script>
 
 <template>
-  <Dialog
-      :header="false"
-      :model-value="props.modelValue"
-      @close="emit('update:modelValue',false)"
-      :full-screen="true"
-  >
+  <Dialog :header="false" :model-value="props.modelValue" @close="emit('update:modelValue', false)" :full-screen="true">
     <div class="wrapper">
-      <EditArticle
-          :article="article"
-          @save="val => emit('save',val)"
-      />
+      <EditArticle :article="article" @save="val => emit('save', val)" />
     </div>
   </Dialog>
 </template>
 
 <style scoped lang="scss">
-
 .wrapper {
   width: 100%;
   height: 100%;

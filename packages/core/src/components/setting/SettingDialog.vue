@@ -5,7 +5,7 @@ import CommonSetting from './CommonSetting.vue'
 import WordSetting from './WordSetting.vue'
 import ArticleSetting from './ArticleSetting.vue'
 import SoundSetting from './SoundSetting.vue'
-import { useDisableEventListener } from '../../hooks/event.ts'
+import { useDisableEventListener } from '@typewords/utils'
 
 const Dialog = defineAsyncComponent(() => import('@typewords/base/Dialog'))
 
@@ -69,8 +69,10 @@ defineExpose({ openSoundTab })
   <BaseIcon
     :title="$t('settings')"
     @click="
-      show = true;
-      tabIndex = props.initialTab ?? (props.type === 'word' ? 1 : 2)
+      () => {
+        show = true
+        tabIndex = props.initialTab ?? (props.type === 'word' ? 1 : 2)
+      }
     "
   >
     <IconFluentSettings20Regular />

@@ -6,10 +6,10 @@ import { useSettingStore } from '@typewords/core/stores/setting.ts'
 import { useRuntimeStore } from '@typewords/core/stores/runtime.ts'
 import type { Dict, PracticeData, TaskWords, Word } from '@typewords/core/types/types.ts'
 import {
-  useDisableEventListener,
   useOnKeyboardEventListener,
   useStartKeyboardEventListener,
 } from '@typewords/core/hooks/event.ts'
+import { useDisableEventListener } from '@typewords/utils'
 import useTheme from '@typewords/core/hooks/theme.ts'
 import { getCurrentStudyWord, useWordOptions } from '@typewords/core/hooks/dict.ts'
 import {

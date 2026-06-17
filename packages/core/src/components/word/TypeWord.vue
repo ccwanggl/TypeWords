@@ -21,6 +21,7 @@ import { useWordOptions } from '../../hooks/dict.ts'
 import { ref } from 'vue'
 import TranslationList from './TranslationList.vue'
 import { useRouter } from 'vue-router'
+import { useOnKeyboardEventListener } from '../../hooks/event.ts'
 
 const { t: $t } = useI18n()
 
@@ -162,6 +163,20 @@ watch(
     updateCurrentWordInfo()
   }
 )
+
+function onKeyUp(e: KeyboardEvent) {
+  hideWord()
+}
+
+function onKeyDown(e: KeyboardEvent) {
+  switch (e.key) {
+    case 'Backspace':
+      del()
+      break
+  }
+}
+
+useOnKeyboardEventListener(onKeyDown, onKeyUp)
 
 onMounted(() => {
   // 初始化当前单词信息

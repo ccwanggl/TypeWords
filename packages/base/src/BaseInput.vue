@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, useAttrs, watch, computed, onUnmounted } from 'vue'
 import Close from './icon/Close.vue'
+import { useDisableEventListener } from '@typewords/utils'
 
 const props = defineProps({
   modelValue: [String, Number],
@@ -36,17 +37,7 @@ let focus = $ref(false)
 let inputEl = $ref<HTMLDivElement>()
 const passwordVisible = ref(false)
 
-//当聚焦时，禁用输入监听
-watch(
-  () => focus,
-  (n: any) => {
-    window.disableEventListener = n
-  }
-)
-
-onUnmounted(() => {
-  window.disableEventListener = false
-})
+useDisableEventListener(() => focus)
 
 const inputType = computed(() => {
   if (props.type === 'password') {

@@ -15,10 +15,7 @@
       @blur="onBlur"
     />
     <!-- 字数统计 -->
-    <span
-      v-if="showWordLimit && maxlength"
-      class="absolute bottom-1 right-2 text-xs text-gray-400 select-none"
-    >
+    <span v-if="showWordLimit && maxlength" class="absolute bottom-1 right-2 text-xs text-gray-400 select-none">
       {{ innerValue.length }} / {{ maxlength }}
     </span>
   </div>
@@ -26,6 +23,7 @@
 
 <script setup lang="ts">
 import { ref, watch, computed, nextTick, onUnmounted } from 'vue'
+import { useDisableEventListener } from '@typewords/utils'
 
 const props = defineProps<{
   modelValue: string
@@ -50,9 +48,7 @@ const textareaRef = ref<HTMLTextAreaElement>()
 
 // 聚焦时禁用练习键盘事件监听，参照 BaseInput.vue 的处理方式
 const focus = ref(false)
-watch(focus, (n: boolean) => {
-  ;(window as any).disableEventListener = n
-})
+useDisableEventListener(focus)
 
 const onFocus = (e: FocusEvent) => {
   focus.value = true
@@ -110,7 +106,6 @@ watch(
   { immediate: true }
 )
 
-
 const vFocus = {
   mounted: (el, bind) => {
     if (bind.value) {
@@ -119,11 +114,6 @@ const vFocus = {
     }
   },
 }
-
-onUnmounted(() => {
-  window.disableEventListener = false
-})
-
 </script>
 <style scoped lang="scss">
 .disabled {
