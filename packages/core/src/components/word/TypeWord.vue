@@ -606,13 +606,17 @@ function typo() {
   wrongTimes.value++
 }
 
-function play() {
+function checkIsWrong() {
   if (settingStore.wordPracticeType === WordPracticeType.Dictation || settingStore.dictation) {
     if (!showWordResult.value && !right) {
       //输入完成，或者已显示的情况下，不记入错误
       typo()
     }
   }
+}
+
+function play() {
+  checkIsWrong()
   volumeIconRef?.play()
 }
 
@@ -746,7 +750,8 @@ const isCollect = $computed(() => isWordCollect(props.word))
           :title="`发音(${settingStore.shortcutKeyMap[ShortcutKey.PlayWordPronunciation]})`"
           ref="volumeIconRef"
           :simple="true"
-          :cb="() => play()"
+          @click="checkIsWrong"
+          :cb="() => playWordAudio(word.word)"
         />
       </div>
 
@@ -1140,7 +1145,7 @@ const isCollect = $computed(() => isWordCollect(props.word))
     @apply text-lg;
   }
 
-  .pos{
+  .pos {
     @apply min-w-10;
   }
 }
