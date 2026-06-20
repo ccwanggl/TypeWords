@@ -746,7 +746,7 @@ const isCollect = $computed(() => isWordCollect(props.word))
           :title="`发音(${settingStore.shortcutKeyMap[ShortcutKey.PlayWordPronunciation]})`"
           ref="volumeIconRef"
           :simple="true"
-          :cb="() => playWordAudio(word.word)"
+          :cb="() => play()"
         />
       </div>
 
