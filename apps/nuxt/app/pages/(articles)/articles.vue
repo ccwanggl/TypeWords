@@ -27,6 +27,7 @@ import { useRouter } from 'vue-router'
 import { DictType } from '@typewords/core/types/enum.ts'
 import { usePracticeArticlePersistence } from '@typewords/core/composables/usePracticePersistence.ts'
 import ImportBanner from '@typewords/core/components/ImportBanner.vue'
+import ReleaseBanner from '@typewords/core/components/ReleaseBanner.vue'
 
 dayjs.extend(isoWeek)
 dayjs.extend(isBetween)
@@ -228,6 +229,8 @@ onMounted(() => {
 
 <template>
   <BasePage>
+    <ReleaseBanner />
+
     <div class="my-100 text-4xl font-bold text-red" v-if="isOldHost">
       已启用新域名
       <a class="mr-4" :href="`${Origin}/words?from_old_site=1`">{{ Origin }}</a

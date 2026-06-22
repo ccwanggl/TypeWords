@@ -51,6 +51,7 @@ import {
 import { myDictList } from '@typewords/core/apis'
 import PracticeWordListDialog from '@typewords/core/components/word/PracticeWordListDialog.vue'
 import ImportBanner from '@typewords/core/components/ImportBanner.vue'
+import ReleaseBanner from '@typewords/core/components/ReleaseBanner.vue'
 import ShufflePracticeSettingDialog from '@typewords/core/components/word/ShufflePracticeSettingDialog.vue'
 import { deleteDict } from '@typewords/core/apis/dict.ts'
 import { flushStatToStore, usePracticeWordPersistence } from '@typewords/core/composables/usePracticePersistence'
@@ -497,6 +498,8 @@ onUnmounted(() => {
 
 <template>
   <BasePage>
+    <ReleaseBanner />
+
     <div class="my-100 text-4xl font-bold text-red" v-if="isOldHost">
       已启用新域名
       <a class="mr-4" :href="`${Origin}/words?from_old_site=1`">{{ Origin }}</a

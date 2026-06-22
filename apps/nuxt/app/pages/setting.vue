@@ -593,17 +593,11 @@ function removeSbConfig() {
             <div
               class="tab"
               :class="tabIndex === 6 && 'active'"
-              @click="
-                () => {
-                  tabIndex = 6
-                  runtimeStore.isNew = false
-                  settingStore.webAppVersion = APP_VERSION.version
-                }
-              "
+              @click="tabIndex = 6"
             >
               <IconFluentCloudSync20Regular />
               <span>{{ $t('data_sync') }}</span>
-              <div class="red-point" v-if="runtimeStore.isError || runtimeStore.isNew"></div>
+              <div class="red-point" v-if="runtimeStore.isError"></div>
             </div>
             <div class="tab" :class="tabIndex === 7 && 'active'" @click="tabIndex = 7">
               <IconFluentKeyboardLayoutFloat20Regular />

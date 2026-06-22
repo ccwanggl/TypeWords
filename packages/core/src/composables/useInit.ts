@@ -119,6 +119,7 @@ export function useInit() {
     )
 
     runtimeStore.isNew = APP_VERSION.version > Number(settingStore.webAppVersion)
+    // runtimeStore.isNew = true
     runtimeStore.isError = Supabase.getStatus().status === 'error'
     window.umami?.track('host', { host: window.location.host })
 

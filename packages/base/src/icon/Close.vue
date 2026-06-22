@@ -2,15 +2,18 @@
 import Tooltip from '../Tooltip.vue'
 
 defineEmits(['click'])
-defineProps<{
-  title?: string
-}>()
+withDefaults(defineProps<{
+  circle?: boolean
+}>(), {
+  circle: true,
+})
 </script>
 
 <template>
   <div class="close" @click="$emit('click')">
-    <Tooltip :title="title">
-      <IconFluentDismissCircle16Regular />
+    <Tooltip :title="$t('close')">
+      <IconFluentDismiss20Regular v-if="!circle" />
+      <IconFluentDismissCircle16Regular v-else />
     </Tooltip>
   </div>
 </template>

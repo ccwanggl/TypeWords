@@ -91,7 +91,7 @@ onMounted(() => {
           <div
             class="red-point"
             :class="!settingStore.sideExpand && 'top-1 right-0'"
-            v-if="runtimeStore.isNew || runtimeStore.isError"
+            v-if="runtimeStore.isError"
           ></div>
         </NuxtLink>
         <NuxtLink to="/feedback" class="row">
@@ -137,7 +137,7 @@ onMounted(() => {
         <div class="nav-item" @click="router.push('/setting')" :class="{ active: route.path === '/setting' }">
           <IconFluentSettings20Regular />
           <span>{{ $t('setting') }}</span>
-          <div class="red-point" v-if="runtimeStore.isNew || runtimeStore.isError"></div>
+          <div class="red-point" v-if="runtimeStore.isError"></div>
         </div>
       </div>
       <div class="nav-toggle" @click="settingStore.mobileNavCollapsed = !settingStore.mobileNavCollapsed">
