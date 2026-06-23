@@ -8,6 +8,7 @@ export const Old_Host = '2study.top'
 export const EMAIL = 'zyronon@163.com'
 export const Origin = `https://${Host}`
 export const APP_NAME = 'Type Words'
+export const IS_DEV = import.meta.env.MODE === 'development'
 
 const common = {
   word_dict_list_version: 1,
@@ -36,6 +37,7 @@ export let AppEnv = {
 
 if (import.meta.client) {
   AppEnv.TOKEN = localStorage.getItem('token') ?? ''
+  // AppEnv.IS_OFFICIAL = IS_DEV || [Host,Old_Host].includes(window.location.host)
 }
 
 AppEnv.IS_LOGIN = !!AppEnv.TOKEN
@@ -102,7 +104,6 @@ export const TourConfig = {
   total: 4,
 }
 
-export const IS_DEV = import.meta.env.MODE === 'development'
 export const LIB_JS_URL = {
   SHEPHERD: `${ENV.LIBS_URL}Shepherd.14.5.1.mjs.js`,
   SNAPDOM: `${ENV.LIBS_URL}/snapdom.min.js`,
@@ -138,6 +139,15 @@ export const DefaultShortcutKeyMap = {
   [ShortcutKey.ChooseB]: '2',
   [ShortcutKey.ChooseC]: '3',
   [ShortcutKey.ChooseD]: '4',
+  [ShortcutKey.PlaySentence1]: 'Ctrl+1',
+  [ShortcutKey.PlaySentence2]: 'Ctrl+2',
+  [ShortcutKey.PlaySentence3]: 'Ctrl+3',
+  [ShortcutKey.PlaySentence4]: 'Ctrl+4',
+  [ShortcutKey.PlaySentence5]: 'Ctrl+5',
+  [ShortcutKey.PlaySentence6]: 'Ctrl+6',
+  [ShortcutKey.PlaySentence7]: 'Ctrl+7',
+  [ShortcutKey.PlaySentence8]: 'Ctrl+8',
+  [ShortcutKey.PlaySentence9]: 'Ctrl+9',
 }
 export const SlideType = {
   HORIZONTAL: 0,

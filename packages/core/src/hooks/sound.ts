@@ -144,7 +144,7 @@ export function usePlayWordAudio() {
     audio.value = new Audio()
   })
 
-  function playAudio(word: string, handle: boolean = true) {
+  function playAudio(word: string, handle: boolean = true, onEnd?: () => void) {
     if (!word) return
     let playbackRate = settingStore.wordSoundSpeed
     if (handle) {
@@ -161,13 +161,14 @@ export function usePlayWordAudio() {
     if (settingStore.soundType === 'uk') {
       url = `${PronunciationApi}${word}&type=1`
     }
+    audio.value.onended = () => onEnd?.()
     audio.value.src = url
     audio.value.volume = settingStore.wordSoundVolume / 100
     audio.value.playbackRate = playbackRate
     audio.value.play()
     audio.value.onerror = () => {
       const ttsPlay = useTTsPlayAudio()
-      ttsPlay(word, { rate: playbackRate })
+      ttsPlay(word, { rate: playbackRate, onEnd })
     }
   }
 
@@ -190,6 +191,7 @@ export interface TTsPlayOptions {
   volume?: number
   pitch?: number
   lang?: string
+  onEnd?: () => void
 }
 
 export function useTTsPlayAudio() {
@@ -203,6 +205,8 @@ export function useTTsPlayAudio() {
     msg.volume = options.volume ?? settingStore.wordSoundVolume / 100
     msg.pitch = options.pitch ?? 1
     msg.lang = options.lang ?? 'en-US'
+    msg.onend = () => options.onEnd?.()
+    msg.onerror = () => options.onEnd?.()
     getVoicesAsync().then((voices: any[]) => {
       // 优先使用用户在当前浏览器配置的声色
       const browserKey = getBrowserKey()

@@ -3,9 +3,10 @@ import type { Word } from '../../types'
 import { usePlayWordAudio } from '../../hooks/sound.ts'
 import { BaseIcon, Tooltip, VolumeIcon } from '@typewords/base'
 import { useWordOptions } from '../../hooks/dict.ts'
+import { openWordCollectPicker } from '../../hooks/useWordCollectPicker.ts'
 import TranslationList from './TranslationList.vue'
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     item: Word
     showTranslate?: boolean
@@ -17,6 +18,7 @@ withDefaults(
     index?: number
     active?: boolean
     disabled?: boolean
+    excludeDictId?: string
   }>(),
   {
     showTranslate: true,
@@ -32,7 +34,13 @@ withDefaults(
 
 const playWordAudio = usePlayWordAudio()
 
-const { isWordCollect, toggleWordCollect, isWordSimple, toggleWordSimple } = useWordOptions()
+const { isWordSimple, toggleWordSimple } = useWordOptions()
+
+function openCollectPicker(e: MouseEvent) {
+  openWordCollectPicker(props.item, e.currentTarget as HTMLElement, {
+    excludeDictId: props.excludeDictId || undefined,
+  })
+}
 </script>
 
 <template>
@@ -53,12 +61,11 @@ const { isWordCollect, toggleWordCollect, isWordSimple, toggleWordSimple } = use
       <slot name="suffix" :item="item"></slot>
       <BaseIcon
         v-if="showCollectIcon"
-        :class="!isWordCollect(item) ? 'collect' : 'fill'"
-        @click.stop="toggleWordCollect(item)"
-        :title="!isWordCollect(item) ? $t('collect') : $t('uncollect')"
+        class="collect"
+        @click.stop="openCollectPicker"
+        :title="$t('collect_to_dict')"
       >
-        <IconFluentStar16Regular v-if="!isWordCollect(item)" />
-        <IconFluentStar16Filled v-else />
+        <IconFluentStar16Regular />
       </BaseIcon>
 
       <BaseIcon

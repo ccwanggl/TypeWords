@@ -5,7 +5,7 @@ import { useSettingStore } from '../stores/setting.ts'
 import { _getDictDataByUrl, cloneDeep, getRandomN, isDictIdMatch, resourceWrap, shuffle, splitIntoN } from '../utils'
 import { onMounted, watch } from 'vue'
 import { AppEnv, DICT_LIST, DictId } from '../config/env.ts'
-import { detail } from '../apis'
+import { addDict, detail } from '../apis'
 import { useRuntimeStore } from '../stores/runtime.ts'
 import { useRoute, useRouter } from 'vue-router'
 import dayjs from 'dayjs'
@@ -58,9 +58,54 @@ export function useWordOptions() {
     store.known.length = store.known.words.length
   }
 
+  function getCollectibleDicts(excludeDictId?: string) {
+    return store.word.bookList.filter(dict => {
+      if (dict.id !== DictId.wordCollect && !dict.custom) return false
+      if (excludeDictId && isDictIdMatch(dict, excludeDictId)) return false
+      return true
+    })
+  }
+
+  function resolveDictInBookList(dict: Dict) {
+    return store.word.bookList.find(d => isDictIdMatch(d, dict.id)) ?? dict
+  }
+
+  function addWordToDict(val: Word, dict: Dict): { ok: boolean } {
+    const target = resolveDictInBookList(dict)
+    const rIndex = target.words.findIndex(v => v.word.toLowerCase() === val.word.toLowerCase())
+    if (rIndex > -1) return { ok: false }
+    target.words.push(val)
+    target.length = target.words.length
+    return { ok: true }
+  }
+
+  async function createCustomDict(name: string): Promise<{ ok: true; dict: Dict } | { ok: false; reason: 'empty' | 'duplicate' | 'api' }> {
+    const trimmed = name.trim()
+    if (!trimmed) return { ok: false, reason: 'empty' }
+    if (store.word.bookList.find(v => v.name === trimmed)) {
+      return { ok: false, reason: 'duplicate' }
+    }
+    let data: Dict = getDefaultDict({
+      name: trimmed,
+      id: 'custom-dict-' + Date.now(),
+      custom: true,
+    })
+    data.type = DictType.word
+    if (AppEnv.CAN_REQUEST) {
+      const res = await addDict(null, data)
+      if (!res.success) return { ok: false, reason: 'api' }
+      data = getDefaultDict(res.data)
+    }
+    store.word.bookList.push(cloneDeep(data))
+    return { ok: true, dict: data }
+  }
+
   return {
     isWordCollect,
     toggleWordCollect,
+    getCollectibleDicts,
+    addWordToDict,
+    createCustomDict,
     isWordSimple,
     toggleWordSimple,
     delWrongWord,

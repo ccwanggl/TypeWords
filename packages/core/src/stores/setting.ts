@@ -12,6 +12,8 @@ export interface SettingState {
   wordSound: boolean
   wordSoundVolume: number
   wordSoundSpeed: number
+  sentenceSoundVolume: number
+  sentenceSoundSpeed: number
   wordReviewRatio: number // 单词复习比例
 
   articleSound: boolean
@@ -61,6 +63,7 @@ export interface SettingState {
   mobileNavCollapsed: boolean // 移动端底部导航栏收缩状态
   ignoreSymbol: boolean // 过滤符号
   practiceSentence: boolean // 练习例句
+  autoPlayFirstSentence: boolean // 单词发音结束后自动播放首条例句
 
   fsrsEasyLimit: number // 小于等于fsrsEasyLimit的卡片会评估为Easy
   fsrsGoodLimit: number // 小于等于fsrsEasyLimit且小于等于fsrsHardLimit的卡片会评估为Good
@@ -79,6 +82,8 @@ export const getDefaultSettingState = (): SettingState => ({
   wordSound: true,
   wordSoundVolume: 100,
   wordSoundSpeed: 1,
+  sentenceSoundVolume: 100,
+  sentenceSoundSpeed: 1,
   wordReviewRatio: 3,
 
   articleSound: true,
@@ -128,6 +133,7 @@ export const getDefaultSettingState = (): SettingState => ({
   mobileNavCollapsed: false,
   ignoreSymbol: true,
   practiceSentence: false,
+  autoPlayFirstSentence: false,
   fsrsEasyLimit: 0,
   fsrsGoodLimit: 3,
   fsrsHardLimit: 6,

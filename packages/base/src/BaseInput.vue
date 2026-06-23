@@ -17,6 +17,14 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  searchable: {
+    type: Boolean,
+    default: false,
+  },
+  searchLoading: {
+    type: Boolean,
+    default: false,
+  },
   required: {
     type: Boolean,
     default: false,
@@ -29,7 +37,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['update:modelValue', 'input', 'change', 'focus', 'blur', 'validation', 'enter'])
+const emit = defineEmits(['update:modelValue', 'input', 'change', 'focus', 'blur', 'validation', 'enter', 'search'])
 const attrs = useAttrs()
 
 const inputValue = ref(props.modelValue)
@@ -88,6 +96,11 @@ const clearInput = () => {
   emit('update:modelValue', '')
 }
 
+const onSearch = () => {
+  if (props.disabled || props.searchLoading) return
+  emit('search')
+}
+
 const vFocus = {
   mounted: (el, bind) => {
     if (bind.value) {
@@ -131,6 +144,13 @@ const vFocus = {
     />
     <slot name="prefix"></slot>
     <Close v-if="clearable && inputValue && !disabled" @click="clearInput" />
+    <IconFluentSearch20Regular
+      v-if="searchable && !disabled"
+      class="search-toggle"
+      :class="{ 'is-loading': searchLoading }"
+      title="搜索"
+      @click="onSearch"
+    />
     <!-- Password visibility toggle -->
     <div
       v-if="type === 'password' && !disabled"
@@ -233,7 +253,8 @@ const vFocus = {
     width: 100%;
   }
 
-  .password-toggle {
+  .password-toggle,
+  .search-toggle {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -247,6 +268,11 @@ const vFocus = {
 
     &:hover {
       opacity: 1;
+    }
+
+    &.is-loading {
+      opacity: 0.4;
+      pointer-events: none;
     }
   }
 }

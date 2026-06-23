@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { BaseButton, Toast, VolumeIcon } from '@typewords/base'
-import { useWordOptions } from '../../hooks/dict'
+import { openWordCollectPicker } from '../../hooks/useWordCollectPicker.ts'
 import { usePlayBeep, usePlayKeyboardAudio, usePlayWordAudio } from '../../hooks/sound'
 import QuestionForm from './QuestionForm.vue'
 import Space from './Space.vue'
@@ -93,8 +93,6 @@ const currentIndex = $computed(() => {
 const playBeep = usePlayBeep()
 const playKeyboardAudio = usePlayKeyboardAudio()
 const playWordAudio = usePlayWordAudio()
-
-const { toggleWordCollect } = useWordOptions()
 
 const store = useBaseStore()
 const settingStore = useSettingStore()
@@ -624,9 +622,7 @@ function onContextMenu(e: MouseEvent, sentence: Sentence, i, j, w) {
             text = doc.nouns().toSingular().text()
           }
           if (!text.length) text = word.word
-          console.log('text', text)
-          toggleWordCollect(getDefaultWord({ word: text, id: nanoid() }))
-          Toast.success(text + ' ' + $t('add_success'))
+          openWordCollectPicker(getDefaultWord({ word: text, id: nanoid() }), { x: e.x, y: e.y })
         },
       },
       {

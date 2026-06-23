@@ -14,7 +14,7 @@ import {
 } from '@typewords/base'
 import { detail } from '@typewords/core/apis'
 import { copyOfficialDict } from '@typewords/core/apis/dict.ts'
-import { wordDelete } from '@typewords/core/apis/words.ts'
+import { wordDelete, queryWord } from '@typewords/core/apis/words.ts'
 import EditBook from '@typewords/core/components/article/EditBook.vue'
 import BaseTable from '@typewords/core/components/BaseTable.vue'
 import PracticeSettingDialog from '@typewords/core/components/word/PracticeSettingDialog.vue'
@@ -27,7 +27,7 @@ import { useRuntimeStore } from '@typewords/core/stores/runtime.ts'
 import { useSettingStore } from '@typewords/core/stores/setting.ts'
 import { Sort, WordPracticeMode } from '@typewords/core/types/enum.ts'
 import { getDefaultDict, getDefaultWord } from '@typewords/core/types/func.ts'
-import type { Dict } from '@typewords/core/types/types.ts'
+import type { Dict, Word } from '@typewords/core/types/types.ts'
 import {
   _getDictDataByUrl,
   _nextTick,
@@ -81,6 +81,82 @@ const wordRules = reactive({
   ],
 })
 let studyLoading = $ref(false)
+let officialWordSnapshot = $ref<Word | null>(null)
+let wordSearchLoading = $ref(false)
+
+function resetWordForm() {
+  wordForm = getDefaultFormWord()
+  officialWordSnapshot = null
+}
+
+function normalizeApiWord(apiData: Record<string, any>): Word {
+  const relWords = apiData.relWords ?? apiData.rel_words
+  return getDefaultWord({
+    ...apiData,
+    id: '',
+    relWords: relWords ?? { root: '', rels: [] },
+    synos: apiData.synos ?? [],
+    etymology: apiData.etymology ?? [],
+    trans: apiData.trans ?? [],
+    sentences: apiData.sentences ?? [],
+    phrases: apiData.phrases ?? [],
+    custom: false,
+  })
+}
+
+function wordContentKey(word: Word) {
+  return JSON.stringify({
+    word: word.word,
+    phonetic0: word.phonetic0 ?? '',
+    phonetic1: word.phonetic1 ?? '',
+    trans: word.trans ?? [],
+    sentences: word.sentences ?? [],
+    phrases: word.phrases ?? [],
+    synos: word.synos ?? [],
+    relWords: word.relWords ?? { root: '', rels: [] },
+    etymology: word.etymology ?? [],
+  })
+}
+
+function isSameWordContent(a: Word, b: Word) {
+  return wordContentKey(a) === wordContentKey(b)
+}
+
+function onWordFormWordChange(value: string) {
+  wordForm.word = value
+  if (officialWordSnapshot && value !== officialWordSnapshot.word) {
+    officialWordSnapshot = null
+  }
+}
+
+async function searchOfficialWord() {
+  const word = wordForm.word?.trim()
+  if (!word) {
+    Toast.warning('请输入单词')
+    return
+  }
+  if (!AppEnv.IS_OFFICIAL) {
+    // Toast.warning('查询失败')
+    // return
+  }
+  wordSearchLoading = true
+  try {
+    const res = await queryWord({ word })
+    if (!res.success || !res.data) {
+      officialWordSnapshot = null
+      Toast.warning('单词未收录')
+      return
+    }
+    const normalized = normalizeApiWord(res.data)
+    const note = wordForm.note
+    const formId = wordForm.id
+    wordForm = word2Str({ ...normalized, id: formId })
+    wordForm.note = note
+    officialWordSnapshot = convertToWord({ ...wordForm })
+  } finally {
+    wordSearchLoading = false
+  }
+}
 
 function syncDictInMyStudyList(study = false) {
   _nextTick(() => {
@@ -107,6 +183,7 @@ async function onSubmitWord() {
   await wordFormRef.validate(valid => {
     if (valid) {
       let data: any = convertToWord(wordForm)
+      data.custom = !officialWordSnapshot || !isSameWordContent(data, officialWordSnapshot)
       // 笔记集中存储，不保存在 Word 对象内
       const noteVal = wordForm.note?.trim()
       const wordKey = wordForm.word
@@ -134,7 +211,7 @@ async function onSubmitWord() {
           return
         } else allList.push(data)
         Toast.success('添加成功')
-        wordForm = getDefaultFormWord()
+        resetWordForm()
       }
       syncDictInMyStudyList()
     } else {
@@ -149,7 +226,7 @@ async function batchDel(ids: string[]) {
       let rIndex2 = allList.findIndex(v => v.id === id)
       if (rIndex2 > -1) {
         if (id === wordForm.id) {
-          wordForm = getDefaultFormWord()
+          resetWordForm()
         }
         allList.splice(rIndex2, 1)
       }
@@ -219,19 +296,20 @@ function word2Str(word) {
 function editWord(word) {
   isOperate = true
   wordForm = word2Str(word)
+  officialWordSnapshot = word.custom ? null : convertToWord({ ...wordForm, id: word.id })
   if (isMob) activeTab = 'edit'
 }
 
 function addWord() {
   // setTimeout(wordListRef?.scrollToBottom, 100)
   isOperate = true
-  wordForm = getDefaultFormWord()
+  resetWordForm()
   if (isMob) activeTab = 'edit'
 }
 
 function closeWordForm() {
   isOperate = false
-  wordForm = getDefaultFormWord()
+  resetWordForm()
   if (isMob) activeTab = 'list'
 }
 
@@ -621,6 +699,7 @@ defineRender(() => {
                     index={val.index}
                     showCollectIcon={false}
                     showMarkIcon={false}
+                    excludeDictId={runtimeStore.editDict.id}
                     item={val.item}
                   >
                     {{
@@ -667,7 +746,15 @@ defineRender(() => {
                   label-width="7rem"
                 >
                   <FormItem label="单词" prop="word">
-                    <BaseInput modelValue={wordForm.word} onUpdate:modelValue={e => (wordForm.word = e)}></BaseInput>
+                    <BaseInput
+                      modelValue={wordForm.word}
+                      onUpdate:modelValue={onWordFormWordChange}
+                      searchable
+                      searchLoading={wordSearchLoading}
+                      clearable
+                      onSearch={searchOfficialWord}
+                      onEnter={searchOfficialWord}
+                    />
                   </FormItem>
                   <FormItem label="英音音标">
                     <BaseInput modelValue={wordForm.phonetic0} onUpdate:modelValue={e => (wordForm.phonetic0 = e)} />

@@ -15,6 +15,7 @@ import { useInit } from '@typewords/core/composables/useInit.ts'
 import { useI18n } from 'vue-i18n'
 import { Supabase } from '@typewords/core/utils/supabase.ts'
 import MiniProgram from '@/components/MiniProgram.vue'
+import WordCollectPopover from '@typewords/core/components/word/WordCollectPopover.vue'
 
 const router = useRouter()
 const { toggleTheme, getTheme, setTheme } = useTheme()
@@ -188,6 +189,7 @@ onMounted(() => {
         </BaseIcon>
       </div>
     </div>
+    <WordCollectPopover />
   </div>
 </template>
 

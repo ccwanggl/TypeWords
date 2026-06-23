@@ -6,6 +6,7 @@ import WordItem from '../word/WordItem.vue'
 interface Props {
   list: Word[]
   excludeWords: string[]
+  excludeDictId?: string
   showTranslate?: boolean
   showWord?: boolean
 }
@@ -44,6 +45,7 @@ defineExpose({ scrollToBottom, scrollToItem })
         :item="item"
         :index="index"
         :active="active"
+        :exclude-dict-id="excludeDictId"
       />
     </template>
   </BaseList>

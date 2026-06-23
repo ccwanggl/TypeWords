@@ -9,6 +9,7 @@ import { useStartKeyboardEventListener } from '@typewords/core/hooks/event.ts'
 import { useDisableEventListener } from '@typewords/utils'
 import useTheme from '@typewords/core/hooks/theme.ts'
 import { getCurrentStudyWord, useWordOptions } from '@typewords/core/hooks/dict.ts'
+import { openWordCollectPicker } from '@typewords/core/hooks/useWordCollectPicker.ts'
 import {
   _getDictDataByUrl,
   _nextTick,
@@ -54,7 +55,7 @@ import WordMarkPickList, { type WordMarkPickResult } from '@typewords/core/compo
 import { buildQuestion } from '@typewords/core/utils/word-test.ts'
 import CollectNotice from '@typewords/core/components/dialog/CollectNotice.vue'
 
-const { toggleWordCollect, isWordSimple, toggleWordSimple } = useWordOptions()
+const { isWordSimple, toggleWordSimple } = useWordOptions()
 const settingStore = useSettingStore()
 const runtimeStore = useRuntimeStore()
 const { toggleTheme } = useTheme()
@@ -810,7 +811,12 @@ function show(e: KeyboardEvent) {
 }
 
 function collect(e: KeyboardEvent) {
-  toggleWordCollect(word)
+  const anchor = typingRef?.getCollectAnchor?.() as HTMLElement | null | undefined
+  openWordCollectPicker(
+    word,
+    anchor ?? { x: window.innerWidth / 2, y: window.innerHeight / 3 },
+    { excludeDictId: store.sdict.id ? String(store.sdict.id) : undefined }
+  )
 }
 
 function play() {
@@ -1084,6 +1090,7 @@ useEvents([
             :list="data.words"
             :activeIndex="data.index"
             :excludeWords="data.excludeWords"
+            :exclude-dict-id="store.sdict.id ? String(store.sdict.id) : undefined"
             @click="(val: any) => (data.index = val.index)"
           >
           </WordList>

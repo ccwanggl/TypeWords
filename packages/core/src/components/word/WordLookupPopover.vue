@@ -2,17 +2,16 @@
 import { BaseIcon, Close, VolumeIcon } from '@typewords/base'
 import { computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useWordOptions } from '../../hooks/dict.ts'
 import { useSettingStore } from '../../stores/setting.ts'
 import { usePlayWordAudio } from '../../hooks/sound.ts'
 import { closeWordLookup, wordLookupState } from '../../hooks/useWordLookup.ts'
+import { openWordCollectPicker } from '../../hooks/useWordCollectPicker.ts'
 import { getDefaultWord } from '../../types/func.ts'
 import TranslationList from './TranslationList.vue'
 
 const { t: $t } = useI18n()
 const settingStore = useSettingStore()
 const playWordAudio = usePlayWordAudio()
-const { isWordCollect, toggleWordCollect } = useWordOptions()
 
 const style = computed(() => ({
   left: `${wordLookupState.x}px`,
@@ -25,14 +24,10 @@ const collectTarget = computed(() => {
   return null
 })
 
-const isCollect = computed(() => {
+function openCollect(e: MouseEvent) {
+  e.stopPropagation()
   const target = collectTarget.value
-  return target ? isWordCollect(target) : false
-})
-
-function toggleCollect() {
-  const target = collectTarget.value
-  if (target) toggleWordCollect(target)
+  if (target) openWordCollectPicker(target, e.currentTarget as HTMLElement)
 }
 
 function onDocumentClick(e: MouseEvent) {
@@ -103,11 +98,10 @@ watch(
             <VolumeIcon :simple="true" :cb="() => playWordAudio(wordLookupState.queryWord)" />
             <BaseIcon
               v-if="collectTarget"
-              @click="toggleCollect"
-              :title="!isCollect ? $t('collect') : $t('uncollect')"
+              @click="openCollect"
+              :title="$t('collect_to_dict')"
             >
-              <IconFluentStarAdd16Regular v-if="!isCollect" />
-              <IconFluentStar16Filled v-else />
+              <IconFluentStarAdd16Regular />
             </BaseIcon>
           </div>
           <div class="text-sm color-gray mt-1">未收录该单词</div>
@@ -122,9 +116,8 @@ watch(
               [{{ wordLookupState.data.phonetic1 }}]
             </span>
             <VolumeIcon :simple="true" :cb="() => playWordAudio(wordLookupState.data!.word)" />
-            <BaseIcon @click="toggleCollect" :title="!isCollect ? $t('collect') : $t('uncollect')">
-              <IconFluentStarAdd16Regular v-if="!isCollect" />
-              <IconFluentStar16Filled v-else />
+            <BaseIcon @click="openCollect" :title="$t('collect_to_dict')">
+              <IconFluentStarAdd16Regular />
             </BaseIcon>
           </div>
           <TranslationList

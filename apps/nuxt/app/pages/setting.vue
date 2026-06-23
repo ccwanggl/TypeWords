@@ -196,6 +196,15 @@ function getShortcutKeyName(key: string): string {
     ChooseB: t('shortcut_choose_b'),
     ChooseC: t('shortcut_choose_c'),
     ChooseD: t('shortcut_choose_d'),
+    PlaySentence1: t('shortcut_play_sentence_1'),
+    PlaySentence2: t('shortcut_play_sentence_2'),
+    PlaySentence3: t('shortcut_play_sentence_3'),
+    PlaySentence4: t('shortcut_play_sentence_4'),
+    PlaySentence5: t('shortcut_play_sentence_5'),
+    PlaySentence6: t('shortcut_play_sentence_6'),
+    PlaySentence7: t('shortcut_play_sentence_7'),
+    PlaySentence8: t('shortcut_play_sentence_8'),
+    PlaySentence9: t('shortcut_play_sentence_9'),
   }
 
   return shortcutKeyNameMap[key] || key
@@ -590,11 +599,8 @@ function removeSbConfig() {
               <IconFluentDatabasePerson20Regular />
               <span>{{ $t('data_management') }}</span>
             </div>
-            <div
-              class="tab"
-              :class="tabIndex === 6 && 'active'"
-              @click="tabIndex = 6"
-            >
+
+            <div class="tab" :class="tabIndex === 6 && 'active'" @click="tabIndex = 6">
               <IconFluentCloudSync20Regular />
               <span>{{ $t('data_sync') }}</span>
               <div class="red-point" v-if="runtimeStore.isError"></div>
@@ -603,17 +609,7 @@ function removeSbConfig() {
               <IconFluentKeyboardLayoutFloat20Regular />
               <span>{{ $t('shortcut_settings') }}</span>
             </div>
-            <div
-              class="tab"
-              :class="tabIndex === 8 && 'active'"
-              @click="
-                () => {
-                  tabIndex = 8
-                  // runtimeStore.isNew = false
-                  // settingStore.webAppVersion = APP_VERSION.version
-                }
-              "
-            >
+            <div class="tab" :class="tabIndex === 8 && 'active'" @click="tabIndex = 8">
               <IconFluentTextBulletListSquare20Regular />
               <span>{{ $t('update_log') }}</span>
               <!--              <div class="red-point" v-if="runtimeStore.isNew"></div>-->

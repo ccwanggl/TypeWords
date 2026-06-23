@@ -3,16 +3,14 @@ import type { Question, Word } from '../../types'
 import { getDefaultWord, IdentifyMethod, ShortcutKey, WordPracticeType } from '../../types'
 import { useBaseStore, useSettingStore } from '../../stores'
 import {
-  getBrowserKey,
   resetActiveWordPlayCount,
   usePlayBeep,
   usePlayCorrect,
   usePlayKeyboardAudio,
-  usePlayWordAudio,
-  useTTsPlayAudio,
 } from '../../hooks/sound'
+import { WordPlayTrigger, useWordPracticeAudio } from '../../composables/useWordPracticeAudio'
 import { emitter, EventKey, useEventsByWatch } from '../../utils/eventBus'
-import { onMounted, onUnmounted, watch } from 'vue'
+import { computed, onMounted, onUnmounted, toRef, watch } from 'vue'
 import SentenceHightLightWord from './SentenceHightLightWord.vue'
 import ClickableEnglishText from './ClickableEnglishText.vue'
 import ClickableWord from './ClickableWord.vue'
@@ -22,10 +20,22 @@ import { BaseButton, BaseIcon, Textarea, Toast, ToastComponent, Tooltip, VolumeI
 import Space from '../article/Space.vue'
 import { useI18n } from 'vue-i18n'
 import { useWordOptions } from '../../hooks/dict.ts'
+import { openWordCollectPicker } from '../../hooks/useWordCollectPicker.ts'
 import { ref } from 'vue'
 import TranslationList from './TranslationList.vue'
-import { useRouter } from 'vue-router'
 import { useOnKeyboardEventListener } from '../../hooks/event.ts'
+
+const SENTENCE_PLAY_SHORTCUT_KEYS = [
+  ShortcutKey.PlaySentence1,
+  ShortcutKey.PlaySentence2,
+  ShortcutKey.PlaySentence3,
+  ShortcutKey.PlaySentence4,
+  ShortcutKey.PlaySentence5,
+  ShortcutKey.PlaySentence6,
+  ShortcutKey.PlaySentence7,
+  ShortcutKey.PlaySentence8,
+  ShortcutKey.PlaySentence9,
+] as const
 
 const { t: $t } = useI18n()
 
@@ -50,6 +60,7 @@ const emit = defineEmits<{
 let input = $ref('')
 let wrong = $ref('')
 let showFullWord = $ref(false)
+let showWordResult = ref(false)
 //错误次数
 let wrongTimes = ref(0)
 //输入锁定，因为跳转到下一个单词有延时，如果重复在延时期间内重复输入，导致会跳转N次
@@ -64,42 +75,33 @@ let cursor = $ref({
 })
 const settingStore = useSettingStore()
 const store = useBaseStore()
-const router = useRouter()
 
 const playBeep = usePlayBeep()
 const playCorrect = usePlayCorrect()
 const playKeyboardAudio = usePlayKeyboardAudio()
-const playWordAudio = usePlayWordAudio()
-const ttsPlayAudio = useTTsPlayAudio()
-
-// 例句发音未配置声色时的一次性引导提示（每次页面加载只提示一次）
-let ttsVoiceHintShown = false
-function playTtsWithGuide(text: string) {
-  if (!ttsVoiceHintShown) {
-    const browserKey = getBrowserKey()
-    const hasVoice = settingStore.ttsVoiceMap?.some(v => v.key === browserKey && v.voice)
-    if (!hasVoice) {
-      ttsVoiceHintShown = true
-      let ins = Toast.warning(
-        '例句默认使用浏览器内置 TTS 发音，若无声请前往「设置 → 音效设置 → TTS 声色」选择可用声色',
-        {
-          duration: 15000000,
-          action: {
-            text: '设置',
-            onClick: () => {
-              router.push('/setting?index=4')
-              ins.close()
-            },
-          },
-        }
-      )
-    }
-  }
-  ttsPlayAudio(text)
-}
 
 const volumeIconRef: any = $ref()
 const sentenceVolumeIconsRefs: any = $ref([])
+
+const canSeeSentences = computed(
+  () =>
+    ![WordPracticeType.Listen, WordPracticeType.Dictation, WordPracticeType.Identify].includes(
+      settingStore.wordPracticeType
+    ) ||
+    showFullWord ||
+    showWordResult.value
+)
+
+const { highlightedSentenceIndex, playWord, playSentence, playTtsWithGuide } = useWordPracticeAudio({
+  word: toRef(props, 'word'),
+  volumeIconRef: computed(() => volumeIconRef),
+  canSeeSentences: () => canSeeSentences.value,
+})
+
+function getSentenceShortcut(index: number) {
+  const key = SENTENCE_PLAY_SHORTCUT_KEYS[index]
+  return key ? settingStore.shortcutKeyMap[key] : ''
+}
 const typingWordRef = $ref<HTMLDivElement>()
 // const volumeTranslateIconRef: any = $ref()
 
@@ -138,9 +140,9 @@ function updateCurrentWordInfo() {
   }
 }
 
-watch(() => props.word, reset)
+watch(() => props.word, () => resetState(WordPlayTrigger.NewWord))
 
-function reset() {
+function resetState(trigger: WordPlayTrigger) {
   clearJumpTimer()
   wrong = input = ''
   wordRepeatCount = 0
@@ -148,15 +150,13 @@ function reset() {
   editingNote = false
   noteInputValue = ''
   currentPracticeSentenceIndex = -1
-  wordCompletedTime = 0 // 重置时间戳
+  wordCompletedTime = 0
   wrongTimes.value = 0
+  highlightedSentenceIndex.value = -1
   resetActiveWordPlayCount(props.word.word)
-  if (settingStore.wordSound) {
-    if (settingStore.wordPracticeType !== WordPracticeType.Dictation) {
-      volumeIconRef?.play(false, true)
-    }
+  if (settingStore.wordSound && settingStore.wordPracticeType !== WordPracticeType.Dictation) {
+    playWord(trigger, { resetIcon: trigger === WordPlayTrigger.NewWord })
   }
-  // 更新当前单词信息
   updateCurrentWordInfo()
   checkCursorPosition()
 }
@@ -187,13 +187,17 @@ onMounted(() => {
   // 初始化当前单词信息
   updateCurrentWordInfo()
 
-  emitter.on(EventKey.resetWord, reset)
+  emitter.on(EventKey.resetWord, onResetWord)
   emitter.on(EventKey.onTyping, onTyping)
 })
 
+function onResetWord() {
+  resetState(WordPlayTrigger.ResetSameWord)
+}
+
 onUnmounted(() => {
   clearJumpTimer()
-  emitter.off(EventKey.resetWord, reset)
+  emitter.off(EventKey.resetWord, onResetWord)
   emitter.off(EventKey.onTyping, onTyping)
 })
 
@@ -211,11 +215,10 @@ function repeat() {
     wordRepeatCount++
     inputLock = false
 
-    if (settingStore.wordSound) volumeIconRef?.play()
+    if (settingStore.wordSound) playWord(WordPlayTrigger.RepeatWord)
   }, settingStore.waitTimeForChangeWord)
 }
 
-let showWordResult = ref(false)
 let pressNumber = 0
 
 const right = $computed(() => {
@@ -269,7 +272,7 @@ function unknown(e) {
     if (!showWordResult.value) {
       showWordResult.value = true
       typo()
-      if (settingStore.wordSound) volumeIconRef?.play()
+      if (settingStore.wordSound) playWord(WordPlayTrigger.RevealUnknown)
       return
     }
   }
@@ -387,16 +390,21 @@ async function onTyping(e: KeyboardEvent) {
             return emit('complete')
           } else {
             //未显示单词，则播放正确音乐，并在后面设置为 showWordResult.value 为 true 来显示单词
+            showWordResult.value = true
             playCorrect()
-            if (settingStore.wordSound) targetVolumeIcon?.play()
+            if (settingStore.wordSound) {
+              playWord(WordPlayTrigger.DictationReveal, { volumeRef: targetVolumeIcon })
+            }
           }
         } else {
           //错误处理
           playBeep()
-          if (settingStore.wordSound) targetVolumeIcon?.play()
+          showWordResult.value = true
+          if (settingStore.wordSound) {
+            playWord(WordPlayTrigger.DictationReveal, { volumeRef: targetVolumeIcon })
+          }
           typo()
         }
-        showWordResult.value = true
         return
       }
     }
@@ -410,7 +418,9 @@ async function onTyping(e: KeyboardEvent) {
     //当自测模式下，按其他键则自动默认为不认识
     showWordResult.value = true
     typo()
-    if (settingStore.wordSound) targetVolumeIcon?.play()
+    if (settingStore.wordSound) {
+      playWord(WordPlayTrigger.IdentifyWrongKey, { volumeRef: targetVolumeIcon })
+    }
     inputLock = false
     onTyping(e)
   } else {
@@ -463,7 +473,9 @@ async function onTyping(e: KeyboardEvent) {
       typo()
       wrong = letter
       playBeep()
-      if (settingStore.wordSound) targetVolumeIcon?.play()
+      if (settingStore.wordSound) {
+        playWord(WordPlayTrigger.Typo, { volumeRef: targetVolumeIcon })
+      }
       setTimeout(() => {
         if (settingStore.inputWrongClear && !isTypingSentence()) input = ''
         wrong = ''
@@ -539,7 +551,7 @@ function del() {
     //如果是自测阶段，按删除键代码弄错了，需要标记为错词，同时从excludeWords里排除
     if (settingStore.wordPracticeType === WordPracticeType.Identify) {
       typo()
-      if (settingStore.wordSound) volumeIconRef?.play()
+      if (settingStore.wordSound) playWord(WordPlayTrigger.DelRetry)
     }
   } else {
     if (wrong) {
@@ -617,12 +629,15 @@ function checkIsWrong() {
   }
 }
 
-function play() {
+function onVolumeIconClick() {
   checkIsWrong()
-  volumeIconRef?.play(true)
+  playWord(WordPlayTrigger.Manual)
 }
 
-defineExpose({ del, showWord, hideWord, play, showWordResult, wrongTimes })
+function play() {
+  checkIsWrong()
+  playWord(WordPlayTrigger.Shortcut)
+}
 
 function mouseleave() {
   setTimeout(() => {
@@ -689,6 +704,11 @@ useEventsByWatch(
   () => isWordTest
 )
 
+useEventsByWatch(
+  SENTENCE_PLAY_SHORTCUT_KEYS.map((key, index) => [key, () => playSentence(index, { highlight: true })]),
+  () => (props.word.sentences?.length ?? 0) > 0
+)
+
 const notice = $computed(() => {
   let text =
     settingStore.wordPracticeType === WordPracticeType.Identify
@@ -708,10 +728,20 @@ const notice = $computed(() => {
   }
 })
 
-const { isWordCollect, toggleWordCollect, isWordSimple, toggleWordSimple } = useWordOptions()
+const { isWordSimple, toggleWordSimple } = useWordOptions()
+
+const collectAnchorRef = ref<HTMLElement | null>(null)
+
+function openCollectPicker(e: MouseEvent) {
+  e.stopPropagation()
+  openWordCollectPicker(props.word, e.currentTarget as HTMLElement, {
+    excludeDictId: store.sdict.id ? String(store.sdict.id) : undefined,
+  })
+}
 
 const isSimple = $computed(() => isWordSimple(props.word))
-const isCollect = $computed(() => isWordCollect(props.word))
+
+defineExpose({ del, showWord, hideWord, play, showWordResult, wrongTimes, getCollectAnchor: () => collectAnchorRef.value })
 </script>
 
 <template>
@@ -752,8 +782,7 @@ const isCollect = $computed(() => isWordCollect(props.word))
           :title="`发音(${settingStore.shortcutKeyMap[ShortcutKey.PlayWordPronunciation]})`"
           ref="volumeIconRef"
           :simple="true"
-          @click="checkIsWrong"
-          :cb="active => playWordAudio(word.word, active)"
+          @click="onVolumeIconClick"
         />
       </div>
 
@@ -822,16 +851,15 @@ const isCollect = $computed(() => isWordCollect(props.word))
         <BaseIcon @click="editNote" :title="editingNote ? '完成编辑笔记' : '编辑笔记'">
           <IconFluentClipboardTextEdit20Regular />
         </BaseIcon>
-        <BaseIcon
-          @click="toggleWordCollect(word)"
-          :title="
-            (!isCollect ? $t('collect') : $t('uncollect')) +
-            `(${settingStore.shortcutKeyMap[ShortcutKey.ToggleCollect]})`
-          "
-        >
-          <IconFluentStarAdd16Regular v-if="!isCollect" />
-          <IconFluentStar16Filled v-else />
-        </BaseIcon>
+        <span ref="collectAnchorRef" class="inline-flex">
+          <BaseIcon
+            class="word-collect-anchor"
+            @click="openCollectPicker"
+            :title="`${$t('collect_to_dict')}(${settingStore.shortcutKeyMap[ShortcutKey.ToggleCollect]})`"
+          >
+            <IconFluentStarAdd16Regular />
+          </BaseIcon>
+        </span>
         <BaseIcon @click="emit('skip')" :title="`${$t('skip_word')}(${settingStore.shortcutKeyMap[ShortcutKey.Next]})`">
           <IconFluentArrowBounce20Regular class="transform-rotate-180" />
         </BaseIcon>
@@ -942,8 +970,12 @@ const isCollect = $computed(() => isWordCollect(props.word))
         <div class="flex flex-col gap-3">
           <div
             class="sentence"
-            :class="wrong && currentPracticeSentenceIndex === index ? 'is-wrong' : ''"
+            :class="{
+              'is-wrong': wrong && currentPracticeSentenceIndex === index,
+              'sentence-highlight': highlightedSentenceIndex === index,
+            }"
             v-for="(item, index) in word.sentences"
+            :key="index"
           >
             <div class="flex gap-space text-xl">
               <div v-if="index !== currentPracticeSentenceIndex">
@@ -959,9 +991,9 @@ const isCollect = $computed(() => isWordCollect(props.word))
                 <span class="letter">{{ displaySentence }}</span>
               </div>
               <VolumeIcon
-                :title="`发音`"
+                :title="getSentenceShortcut(index) ? `发音(${getSentenceShortcut(index)})` : '发音'"
                 :simple="false"
-                :cb="() => playTtsWithGuide(item.c)"
+                @click.stop="() => playSentence(index)"
                 ref="sentenceVolumeIconsRefs"
               />
             </div>
@@ -977,13 +1009,20 @@ const isCollect = $computed(() => isWordCollect(props.word))
         <div class="flex">
           <div class="label">{{ $t('phrases') }}</div>
           <div class="flex flex-col">
-            <div class="flex items-center gap-4" v-for="item in word.phrases">
-              <ClickableEnglishText
-                class="en"
-                :text="item.c"
-                :word="word.word"
-                :dictation="!(!settingStore.dictation || showFullWord || showWordResult)"
-              />
+            <div class="flex items-center gap-4" v-for="(item, index) in word.phrases" :key="index">
+              <div class="flex gap-space items-center">
+                <ClickableEnglishText
+                  class="en"
+                  :text="item.c"
+                  :word="word.word"
+                  :dictation="!(!settingStore.dictation || showFullWord || showWordResult)"
+                />
+                <VolumeIcon
+                  :simple="false"
+                  title="发音"
+                  @click.stop="() => playTtsWithGuide(item.c)"
+                />
+              </div>
               <div class="cn anim" v-opacity="settingStore.translate || showFullWord || showWordResult">
                 {{ item.cn }}
               </div>
@@ -1149,6 +1188,12 @@ const isCollect = $computed(() => isWordCollect(props.word))
 
   .pos {
     @apply min-w-10;
+  }
+
+  .sentence-highlight {
+    @apply rounded-lg px-3 py-2 -mx-3;
+    background: rgba(124, 58, 237, 0.1);
+    box-shadow: inset 0 0 0 1px rgba(124, 58, 237, 0.25);
   }
 }
 

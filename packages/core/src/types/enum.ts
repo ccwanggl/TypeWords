@@ -50,6 +50,15 @@ export enum ShortcutKey {
   ChooseB = 'ChooseB',
   ChooseC = 'ChooseC',
   ChooseD = 'ChooseD',
+  PlaySentence1 = 'PlaySentence1',
+  PlaySentence2 = 'PlaySentence2',
+  PlaySentence3 = 'PlaySentence3',
+  PlaySentence4 = 'PlaySentence4',
+  PlaySentence5 = 'PlaySentence5',
+  PlaySentence6 = 'PlaySentence6',
+  PlaySentence7 = 'PlaySentence7',
+  PlaySentence8 = 'PlaySentence8',
+  PlaySentence9 = 'PlaySentence9',
 }
 
 export enum TranslateEngine {

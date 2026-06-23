@@ -18,6 +18,27 @@ const emit = defineEmits(['click'])
 let step = $ref(2)
 let count = $ref(0)
 
+function runAnimation(reset = false, time = props.time) {
+  if (reset) {
+    step = 2
+    count = 0
+  }
+  count++
+  setTimeout(() => {
+    if (step === 2) {
+      if (count === 1) {
+        step = 0
+        runAnimation(false, time + 100)
+      } else {
+        count = 0
+      }
+    } else {
+      step++
+      runAnimation(false, time + 100)
+    }
+  }, time)
+}
+
 function play(handle: boolean = false, reset = false, time = props.time) {
   if (reset) {
     step = 2
@@ -26,28 +47,19 @@ function play(handle: boolean = false, reset = false, time = props.time) {
   if (count === 0) {
     props?.cb?.(handle)
   }
-  count++
-  setTimeout(() => {
-    if (step === 2) {
-      if (count === 1) {
-        step = 0
-        play(false, false, time + 100)
-      } else {
-        count = 0
-      }
-    } else {
-      step++
-      play(false, false, time + 100)
-    }
-  }, time)
+  runAnimation(false, time)
 }
 
-function click() {
-  emit('click')
+function animateOnly(reset = false, time = props.time) {
+  runAnimation(reset, time)
+}
+
+function click(event: MouseEvent) {
+  emit('click', event)
   play(true)
 }
 
-defineExpose({ play })
+defineExpose({ play, animateOnly })
 </script>
 
 <template>
