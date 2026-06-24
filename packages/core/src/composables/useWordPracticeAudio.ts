@@ -104,7 +104,14 @@ export function useWordPracticeAudio({ word, volumeIconRef, canSeeSentences }: W
       trigger === WordPlayTrigger.Manual ||
       trigger === WordPlayTrigger.Shortcut
     const chain = shouldChainFirstSentence(trigger)
-    const onEnd = chain ? () => playSentence(0, { highlight: true }) : undefined
+    const chainWord = chain ? word.value.word : undefined
+    const onEnd = chainWord
+      ? () => {
+        // 如果单词变化了，则不播放例句，防止快速切换单词时播放例句不正确
+          if (word.value.word !== chainWord) return
+          playSentence(0, { highlight: true })
+        }
+      : undefined
 
     playWordAudio(word.value.word, handle, onEnd)
 

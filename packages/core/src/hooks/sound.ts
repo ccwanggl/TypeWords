@@ -136,6 +136,23 @@ export function resetActiveWordPlayCount(word: string) {
   activeWordPlayCountMap.delete(word.trim().toLowerCase())
 }
 
+let isPlaying = false
+let activeWordAudio: HTMLAudioElement | null = null
+
+export function cancelWordPracticeAudio() {
+  if (typeof speechSynthesis !== 'undefined') {
+    speechSynthesis.pause()
+    speechSynthesis.cancel()
+  }
+  if (activeWordAudio) {
+    activeWordAudio.onended = null
+    activeWordAudio.onerror = null
+    activeWordAudio.pause()
+    activeWordAudio.currentTime = 0
+  }
+  isPlaying = false
+}
+
 export function usePlayWordAudio() {
   const settingStore = useSettingStore()
   let audio = ref<HTMLAudioElement>(null)
@@ -145,7 +162,10 @@ export function usePlayWordAudio() {
   })
 
   function playAudio(word: string, handle: boolean = true, onEnd?: () => void) {
-    if (!word) return
+    if (!word || isPlaying) return
+    isPlaying = true
+    speechSynthesis.pause()
+    speechSynthesis.cancel()
     let playbackRate = settingStore.wordSoundSpeed
     if (handle) {
       const key = word.trim().toLowerCase()
@@ -161,14 +181,19 @@ export function usePlayWordAudio() {
     if (settingStore.soundType === 'uk') {
       url = `${PronunciationApi}${word}&type=1`
     }
-    audio.value.onended = () => onEnd?.()
+    let onended = () => {
+      isPlaying = false
+      onEnd?.()
+    }
+    activeWordAudio = audio.value
+    audio.value.onended = onended
     audio.value.src = url
     audio.value.volume = settingStore.wordSoundVolume / 100
     audio.value.playbackRate = playbackRate
     audio.value.play()
     audio.value.onerror = () => {
       const ttsPlay = useTTsPlayAudio()
-      ttsPlay(word, { rate: playbackRate, onEnd })
+      ttsPlay(word, { rate: playbackRate, onEnd: onended })
     }
   }
 
